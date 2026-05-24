@@ -876,6 +876,208 @@ footer {
   border-radius: 0 0 8px 8px;
 }
 
+/* ===== Asset Detail Modal ===== */
+.asset-detail-modal-inner {
+  background: #fff;
+  border-radius: 10px;
+  min-width: 340px;
+  max-width: 680px;
+  width: 92vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  padding: 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.asset-detail-close {
+  position: absolute;
+  top: 0.85em;
+  right: 0.85em;
+  font-size: 1.2em;
+  background: transparent !important;
+  border: none !important;
+  color: #777 !important;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  min-height: unset;
+  z-index: 1;
+  line-height: 1;
+}
+
+.asset-detail-close:hover {
+  background: #f0f0f0 !important;
+  color: #333 !important;
+}
+
+.asset-detail-header {
+  padding: 1.4em 1.5em 1.1em;
+  border-bottom: 1px solid #e4eaf0;
+  background: linear-gradient(135deg, #f4f9ff 0%, #eaf1fb 100%);
+  border-radius: 10px 10px 0 0;
+}
+
+.asset-detail-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1a2a3a;
+  margin: 0 2.2em 0.55em 0;
+  line-height: 1.3;
+}
+
+.asset-detail-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.asset-detail-section {
+  padding: 1em 1.5em;
+  border-bottom: 1px solid #e4eaf0;
+}
+
+.asset-detail-section:last-child {
+  border-bottom: none;
+}
+
+.asset-detail-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #8097aa;
+  margin: 0 0 0.7em;
+}
+
+.asset-service-status {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.service-date-card {
+  background: #f4f7fa;
+  border: 1px solid #dde4ec;
+  border-radius: 7px;
+  padding: 0.65em 0.9em;
+}
+
+.service-date-card.sdc-overdue {
+  background: #fdeaea;
+  border-color: #f4bcbc;
+}
+
+.service-date-card.sdc-due-soon {
+  background: #fff8e6;
+  border-color: #fde68a;
+}
+
+.service-date-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8097aa;
+  margin-bottom: 4px;
+}
+
+.service-date-card.sdc-overdue .service-date-label {
+  color: #9f2f2f;
+}
+
+.service-date-card.sdc-due-soon .service-date-label {
+  color: #8a6218;
+}
+
+.service-date-value {
+  display: block;
+  font-size: 0.93rem;
+  font-weight: 600;
+  color: #2a3a4a;
+}
+
+.service-date-card.sdc-overdue .service-date-value {
+  color: #9f2f2f;
+}
+
+.service-date-card.sdc-due-soon .service-date-value {
+  color: #8a6218;
+}
+
+.service-date-tag {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+
+.service-date-tag.sdt-overdue {
+  background: #9f2f2f;
+  color: #fff;
+}
+
+.service-date-tag.sdt-due-soon {
+  background: #d97706;
+  color: #fff;
+}
+
+.asset-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 20px;
+}
+
+.asset-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.asset-detail-field-label {
+  font-size: 0.71rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8097aa;
+}
+
+.asset-detail-field-value {
+  font-size: 0.9rem;
+  color: #2a3a4a;
+  font-weight: 500;
+}
+
+.asset-detail-history-wrap {
+  max-height: 32vh;
+  overflow-y: auto;
+  border: 1px solid #e0e8f0;
+  border-radius: 6px;
+  margin-top: 0.5em;
+}
+
+.asset-detail-add-form .form-row {
+  margin-bottom: 0.6em;
+}
+
+.asset-detail-add-form label {
+  font-size: 0.88rem;
+}
+
+.asset-detail-form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1em;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* Base styles for dark mode */
 body.dark-mode {
   background-color: #0f141a;
@@ -1130,4 +1332,96 @@ body.dark-mode {
 
 .dark-mode button:hover {
   background-color: #3a4858;
+}
+
+/* Dark mode: asset detail modal */
+.dark-mode .asset-detail-modal-inner {
+  background: #17202a;
+  color: #d6dde6;
+  border: 1px solid #2d3a49;
+}
+
+.dark-mode .asset-detail-header {
+  background: linear-gradient(135deg, #1a2534 0%, #1e2d3d 100%);
+  border-color: #2d3a49;
+}
+
+.dark-mode .asset-detail-name {
+  color: #dfe9f5;
+}
+
+.dark-mode .asset-detail-section {
+  border-color: #2d3a49;
+}
+
+.dark-mode .asset-detail-section-title,
+.dark-mode .service-date-label,
+.dark-mode .asset-detail-field-label {
+  color: #6b8090;
+}
+
+.dark-mode .service-date-card {
+  background: #1e2d3d;
+  border-color: #2d3a49;
+}
+
+.dark-mode .service-date-card.sdc-overdue {
+  background: #3a1f1f;
+  border-color: #6b3030;
+}
+
+.dark-mode .service-date-card.sdc-overdue .service-date-label,
+.dark-mode .service-date-card.sdc-overdue .service-date-value {
+  color: #f4a0a0;
+}
+
+.dark-mode .service-date-card.sdc-due-soon {
+  background: #332b10;
+  border-color: #7a5c1a;
+}
+
+.dark-mode .service-date-card.sdc-due-soon .service-date-label,
+.dark-mode .service-date-card.sdc-due-soon .service-date-value {
+  color: #ffd580;
+}
+
+.dark-mode .service-date-value {
+  color: #c8d8e8;
+}
+
+.dark-mode .asset-detail-field-value {
+  color: #c8d8e8;
+}
+
+.dark-mode .asset-detail-history-wrap {
+  border-color: #2d3a49;
+}
+
+.dark-mode .asset-detail-close {
+  color: #8da5bb !important;
+}
+
+.dark-mode .asset-detail-close:hover {
+  background: #1e2d3d !important;
+  color: #d6dde6 !important;
+}
+
+/* Responsive: asset detail modal */
+@media (max-width: 540px) {
+  .asset-service-status,
+  .asset-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-detail-modal-inner {
+    min-width: 0;
+    width: 98vw;
+    max-height: 95vh;
+  }
+
+  .asset-detail-header,
+  .asset-detail-section {
+    padding-left: 1em;
+    padding-right: 1em;
+  }
 }

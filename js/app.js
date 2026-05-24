@@ -1371,69 +1371,126 @@ document.addEventListener("DOMContentLoaded", function () {
             `).join("")
                 : `<tr><td colspan="5" class="empty-state-cell">No history events recorded yet.</td></tr>`;
 
+            // Service status info for emphasis
+            const statusInfo = getAssetStatusInfo(asset);
+            const nextServiceCardClass = statusInfo.isOverdue ? "sdc-overdue" : statusInfo.isDueSoon ? "sdc-due-soon" : "";
+            const nextServiceTag = statusInfo.isOverdue
+                ? `<span class="service-date-tag sdt-overdue">Overdue</span>`
+                : statusInfo.isDueSoon
+                    ? `<span class="service-date-tag sdt-due-soon">Due Soon</span>`
+                    : "";
+
             // Modal innerHTML
             modal.innerHTML = `
-        <div style="background: #fff; padding: 2em; border-radius: 8px; min-width:350px; max-width:650px; position:relative">
-            <button id="close-history-modal" style="position:absolute;top:1em;right:1em;font-size:1.2em;">&times;</button>
-            <h2>Asset Details</h2>
-            <div><b>Name:</b> ${escapeHtml(asset.name || "—")}</div>
-            <div><b>Type:</b> ${escapeHtml(asset.type || "—")}</div>
-            <div><b>Status:</b> ${escapeHtml(asset.status || "—")}</div>
-            <div><b>VIN:</b> ${escapeHtml(asset.vin || "—")}</div>
-            <div><b>Year of Manufacturing:</b> ${escapeHtml(asset.year || "—")}</div>
-            <div><b>Color:</b> ${escapeHtml(asset.color || "—")}</div>
-            <div><b>Last Service Date:</b> ${escapeHtml(formatDisplayDate(asset.lastServiceDate))}</div>
-            <div><b>Next Service Date:</b> ${escapeHtml(formatDisplayDate(asset.nextServiceDate))}</div>
-            <div><b>Added:</b> ${escapeHtml(formatDisplayDate(asset.created || asset.lastServiceDate))}</div>
-            <hr>
-            <h3>Service History</h3>
-            <div style="max-height:40vh; overflow-y:auto;">
-                <table style="width:100%;border-collapse:collapse;" border="1">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Operation</th>
-                            <th>Label</th>
-                            <th>Note</th>
-                            <th>Edit</th>
-                        </tr>
-                    </thead>
-                    <tbody>${historyRows}</tbody>
-                </table>
+        <div class="asset-detail-modal-inner">
+            <button id="close-history-modal" class="asset-detail-close" title="Close">&times;</button>
+
+            <!-- Header: name + badges -->
+            <div class="asset-detail-header">
+                <h2 class="asset-detail-name">${escapeHtml(asset.name || "—")}</h2>
+                <div class="asset-detail-badges">
+                    ${renderStatusBadge(asset.status || "Active")}
+                    ${renderHealthIndicator(asset)}
+                </div>
             </div>
-            <hr>
-            <h4>Add History Event</h4>
-            <form id="add-history-form">
-                <div style="margin-bottom:0.5em;">
-                    <label>Operation:
-                        <select id="history-operation" required>
-                            <option value="Parts Change">Parts Change</option>
-                            <option value="Maintenance">Maintenance</option>
-                            <option value="Repair">Repair</option>
-                            <option value="Inspection">Inspection</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </label>
+
+            <!-- Service Status -->
+            <div class="asset-detail-section">
+                <h4 class="asset-detail-section-title">Service Status</h4>
+                <div class="asset-service-status">
+                    <div class="service-date-card">
+                        <span class="service-date-label">Last Service</span>
+                        <span class="service-date-value">${escapeHtml(formatDisplayDate(asset.lastServiceDate))}</span>
+                    </div>
+                    <div class="service-date-card ${nextServiceCardClass}">
+                        <span class="service-date-label">Next Service</span>
+                        <span class="service-date-value">${escapeHtml(formatDisplayDate(asset.nextServiceDate))}</span>
+                        ${nextServiceTag}
+                    </div>
                 </div>
-                <div style="margin-bottom:0.5em;">
-                    <label>Label:
-                        <select id="history-label" required>
-                            <option value="Mechanical">Mechanical</option>
-                            <option value="Electrical">Electrical</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </label>
+            </div>
+
+            <!-- Overview: metadata fields -->
+            <div class="asset-detail-section">
+                <h4 class="asset-detail-section-title">Overview</h4>
+                <div class="asset-detail-grid">
+                    <div class="asset-detail-field">
+                        <span class="asset-detail-field-label">Type</span>
+                        <span class="asset-detail-field-value">${escapeHtml(asset.type || "—")}</span>
+                    </div>
+                    <div class="asset-detail-field">
+                        <span class="asset-detail-field-label">VIN</span>
+                        <span class="asset-detail-field-value">${escapeHtml(asset.vin || "—")}</span>
+                    </div>
+                    <div class="asset-detail-field">
+                        <span class="asset-detail-field-label">Year</span>
+                        <span class="asset-detail-field-value">${escapeHtml(asset.year || "—")}</span>
+                    </div>
+                    <div class="asset-detail-field">
+                        <span class="asset-detail-field-label">Color</span>
+                        <span class="asset-detail-field-value">${escapeHtml(asset.color || "—")}</span>
+                    </div>
+                    <div class="asset-detail-field">
+                        <span class="asset-detail-field-label">Added</span>
+                        <span class="asset-detail-field-value">${escapeHtml(formatDisplayDate(asset.created || asset.lastServiceDate))}</span>
+                    </div>
                 </div>
-                <div style="margin-bottom:0.5em;">
-                    <label>Note:
-                        <input type="text" id="history-note" required style="width:100%;">
-                    </label>
+            </div>
+
+            <!-- Service History table -->
+            <div class="asset-detail-section">
+                <h3>Service History</h3>
+                <div class="asset-detail-history-wrap">
+                    <table style="width:100%;border-collapse:collapse;" border="1">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Operation</th>
+                                <th>Label</th>
+                                <th>Note</th>
+                                <th>Edit</th>
+                            </tr>
+                        </thead>
+                        <tbody>${historyRows}</tbody>
+                    </table>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top:1em;">
-                    <button type="submit">Add Event</button>
-                    <button type="button" id="export-service-history-pdf" style="margin-left:auto;">Export Service History PDF</button>
-                </div>
-            </form>
+            </div>
+
+            <!-- Add History Event form -->
+            <div class="asset-detail-section">
+                <h4>Add History Event</h4>
+                <form id="add-history-form" class="asset-detail-add-form">
+                    <div class="form-row">
+                        <label>Operation:
+                            <select id="history-operation" required>
+                                <option value="Parts Change">Parts Change</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Repair">Repair</option>
+                                <option value="Inspection">Inspection</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label>Label:
+                            <select id="history-label" required>
+                                <option value="Mechanical">Mechanical</option>
+                                <option value="Electrical">Electrical</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label>Note:
+                            <input type="text" id="history-note" required style="width:100%;">
+                        </label>
+                    </div>
+                    <div class="asset-detail-form-actions">
+                        <button type="submit">Add Event</button>
+                        <button type="button" id="export-service-history-pdf">Export Service History PDF</button>
+                    </div>
+                </form>
+            </div>
         </div>
         `;
 
