@@ -1721,3 +1721,140 @@ body.dark-mode {
     padding-right: 1em;
   }
 }
+
+/* ---- Cost input group: amount + currency side-by-side ---- */
+.cost-input-group {
+  display: flex;
+  gap: 0.5em;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: 0.2em;
+}
+
+.cost-amount-wrap {
+  flex: 1 1 100px;
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cost-amount-wrap input {
+  width: 100%;
+}
+
+.cost-currency-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cost-currency-wrap select {
+  min-width: 75px;
+  width: 75px;
+}
+
+.cost-input-group .cost-sub-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7a8a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cost-helper-text {
+  display: block;
+  font-size: 0.75rem;
+  color: #7a8fa0;
+  margin-top: 0.3em;
+  font-style: italic;
+}
+
+/* ---- History attachment badge ---- */
+.history-attachment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: #f0f4ff;
+  color: #3456b0;
+  border: 1px solid #c4d4f0;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.history-attachment-badge:hover {
+  background: #dde8ff;
+  color: #2240a0;
+}
+
+/* ---- Assets modal sort row ---- */
+.asset-sort-row {
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  margin-bottom: 0.5em;
+  font-size: 0.86rem;
+  flex-wrap: wrap;
+}
+
+.asset-sort-row label {
+  font-weight: 600;
+  color: #4a5d73;
+  white-space: nowrap;
+}
+
+.asset-sort-row select {
+  font-size: 0.86rem;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid #c5d4e0;
+}
+
+/* ---- Dark mode: cost group ---- */
+.dark-mode .cost-input-group .cost-sub-label {
+  color: #8ea4ba;
+}
+
+.dark-mode .cost-helper-text {
+  color: #7a9eb8;
+}
+
+/* ---- Dark mode: attachment badge ---- */
+.dark-mode .history-attachment-badge {
+  background: #1a2a44;
+  color: #8ab4f8;
+  border-color: #2d4a7a;
+}
+
+.dark-mode .history-attachment-badge:hover {
+  background: #203a60;
+  color: #aad0ff;
+}
+
+/* ---- Dark mode: sort row ---- */
+.dark-mode .asset-sort-row label {
+  color: #8ea4ba;
+}
+
+.dark-mode .asset-sort-row select {
+  background: #1d2a36;
+  color: #d0dce8;
+  border-color: #2d3f52;
+}
+
+/* Responsive: cost input group stacks on very small screens */
+@media (max-width: 360px) {
+  .cost-input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cost-currency-wrap select {
+    width: 100%;
+  }
+}
