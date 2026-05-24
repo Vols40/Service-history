@@ -22,6 +22,9 @@
         <!-- Dark Mode Toggle -->
         <button id="dark-mode-toggle" class="dark-mode-toggle">🌙 Dark Mode</button>
 
+        <!-- Preferences -->
+        <button id="open-preferences" class="preferences-toggle" type="button">⚙️ Preferences</button>
+
         <!-- Language Selector -->
         <select id="language-selector" aria-label="Language Selector">
             <option value="en" selected>English</option>
@@ -129,7 +132,7 @@
                 <strong class="reminder-summary-value" id="reminder-due-week">0</strong>
             </article>
             <article class="reminder-summary-card">
-                <span class="reminder-summary-label">Due This Month</span>
+                <span class="reminder-summary-label" id="reminder-window-label">Due in 30 Days</span>
                 <strong class="reminder-summary-value" id="reminder-due-month">0</strong>
             </article>
         </div>
