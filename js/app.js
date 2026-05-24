@@ -112,7 +112,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         type: normalizedType,
                         asset: asset.name,
                         date: new Date(ev.date),
-                        detail: ev.operation ? `${ev.operation}${ev.label ? ` • ${ev.label}` : ""}` : "Service event",
+                        detail: ev.operation ? `${ev.operation}${ev.label ? ` • ${ev.label}` : ""}` : "Service Event",
                         note: ev.note || ""
                     });
                 });
@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     type: "comment",
                     asset: "",
                     date: new Date(c.date),
-                    detail: "Team note",
+                    detail: "Comment",
                     note: c.text
                 });
             });
