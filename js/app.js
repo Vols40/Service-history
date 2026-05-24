@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
         //---Upcoming Reminders---
         const REMINDER_PREFS_KEY = "serviceReminderPreferences";
         const REMINDER_SNOOZE_DAYS = 3;
+        const REMINDER_MODAL_FOCUS_DELAY_MS = 100;
 
         function getReminderPreferences() {
             try {
@@ -49,14 +50,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 return !isNaN(snoozeUntil.getTime()) && snoozeUntil > now;
             }
             return false;
-        }
-
-        function updateReminderPreference(reminder, updates = {}) {
-            const preferences = getReminderPreferences();
-            const reminderKey = getReminderKey(reminder);
-            const current = preferences[reminderKey] || {};
-            preferences[reminderKey] = { ...current, ...updates };
-            saveReminderPreferences(preferences);
         }
 
         function renderReminderGroupList(listId, reminders, emptyState) {
@@ -106,7 +99,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     noteInput.focus();
                     noteInput.scrollIntoView({ behavior: "smooth", block: "center" });
                 }
-            }, 70);
+            }, REMINDER_MODAL_FOCUS_DELAY_MS);
         }
 
         function getReminderRelativeLabel(nextService, today) {
@@ -210,7 +203,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
                 if (action === "dismiss") {
-                    updateReminderPreference(asset, { dismissed: true, snoozeUntil: "" });
+                    const preferences = getReminderPreferences();
+                    preferences[getReminderKey(asset)] = { dismissed: true };
+                    saveReminderPreferences(preferences);
                     showFeedback("Reminder dismissed locally.", "success");
                     renderUpcomingReminders();
                     return;
@@ -218,7 +213,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (action === "snooze") {
                     const snoozeUntil = new Date();
                     snoozeUntil.setDate(snoozeUntil.getDate() + REMINDER_SNOOZE_DAYS);
-                    updateReminderPreference(asset, { dismissed: false, snoozeUntil: snoozeUntil.toISOString() });
+                    const preferences = getReminderPreferences();
+                    preferences[getReminderKey(asset)] = { snoozeUntil: snoozeUntil.toISOString() };
+                    saveReminderPreferences(preferences);
                     showFeedback(`Reminder snoozed for ${REMINDER_SNOOZE_DAYS} days.`, "success");
                     renderUpcomingReminders();
                 }
