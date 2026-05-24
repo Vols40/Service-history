@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const REMINDER_PREFS_KEY = "serviceReminderPreferences";
         const REMINDER_SNOOZE_DAYS = 3;
         const REMINDER_MODAL_FOCUS_DELAY_MS = 100;
+        const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
 
         function getReminderPreferences() {
             try {
@@ -103,8 +104,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function getReminderRelativeLabel(nextService, today) {
-            const millisecondsPerDay = 1000 * 60 * 60 * 24;
-            const diffDays = Math.round((nextService - today) / millisecondsPerDay);
+            const diffDays = Math.round((nextService - today) / MILLISECONDS_PER_DAY);
             if (diffDays < 0) return `${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? "" : "s"} overdue`;
             if (diffDays === 0) return "Due today";
             if (diffDays === 1) return "Due tomorrow";
@@ -120,59 +120,52 @@ document.addEventListener("DOMContentLoaded", function () {
             const monthLimit = new Date(today);
             monthLimit.setDate(today.getDate() + daysAhead);
 
-            const reminders = assets
-                .filter(asset => asset.nextServiceDate)
-                .map(a => ({
-                    ...a,
-                    nextService: new Date(a.nextServiceDate)
-                }))
-                .filter(a => !isNaN(a.nextService.getTime()))
-                .map(a => {
-                    a.nextService.setHours(0, 0, 0, 0);
-                    let category = "upcoming-later";
-                    let urgencyText = "Upcoming";
-                    if (a.nextService < today) {
-                        category = "overdue";
-                        urgencyText = "Overdue";
-                    } else if (a.nextService <= dueSoonLimit) {
-                        category = "due-soon";
-                        urgencyText = "Due Soon";
-                    }
-                    return {
-                        ...a,
-                        category,
-                        urgencyText,
-                        relativeLabel: getReminderRelativeLabel(a.nextService, today)
-                    };
-                })
-                .filter(reminder => !isReminderSuppressed(reminder, new Date()));
+            const now = new Date();
+            const reminderGroups = { overdue: [], dueSoon: [], upcomingLater: [] };
+            let dueThisMonthCount = 0;
 
-            const overdue = reminders
-                .filter(reminder => reminder.category === "overdue")
-                .sort((left, right) => left.nextService - right.nextService);
-            const dueSoon = reminders
-                .filter(reminder => reminder.category === "due-soon")
-                .sort((left, right) => left.nextService - right.nextService);
-            const upcomingLater = reminders
-                .filter(reminder => reminder.category === "upcoming-later")
-                .sort((left, right) => left.nextService - right.nextService);
+            assets.forEach(asset => {
+                if (!asset.nextServiceDate) return;
+                const nextService = new Date(asset.nextServiceDate);
+                if (isNaN(nextService.getTime())) return;
+                nextService.setHours(0, 0, 0, 0);
+                let category = "upcoming-later";
+                let urgencyText = "Upcoming";
+                if (nextService < today) {
+                    category = "overdue";
+                    urgencyText = "Overdue";
+                } else if (nextService <= dueSoonLimit) {
+                    category = "due-soon";
+                    urgencyText = "Due Soon";
+                }
+                const reminder = {
+                    ...asset,
+                    nextService,
+                    category,
+                    urgencyText,
+                    relativeLabel: getReminderRelativeLabel(nextService, today)
+                };
+                if (isReminderSuppressed(reminder, now)) return;
+                if (nextService >= today && nextService <= monthLimit) dueThisMonthCount++;
+                if (category === "overdue") reminderGroups.overdue.push(reminder);
+                else if (category === "due-soon") reminderGroups.dueSoon.push(reminder);
+                else reminderGroups.upcomingLater.push(reminder);
+            });
+
+            reminderGroups.overdue.sort((left, right) => left.nextService - right.nextService);
+            reminderGroups.dueSoon.sort((left, right) => left.nextService - right.nextService);
+            reminderGroups.upcomingLater.sort((left, right) => left.nextService - right.nextService);
+
+            const overdue = reminderGroups.overdue;
+            const dueSoon = reminderGroups.dueSoon;
+            const upcomingLater = reminderGroups.upcomingLater;
 
             updateReminderCount("reminder-overdue-total", overdue.length);
             updateReminderCount("reminder-due-week", dueSoon.length);
-            updateReminderCount(
-                "reminder-due-month",
-                reminders.filter(reminder => reminder.nextService >= today && reminder.nextService <= monthLimit).length
-            );
+            updateReminderCount("reminder-due-month", dueThisMonthCount);
             updateReminderCount("reminder-overdue-count", overdue.length);
             updateReminderCount("reminder-due-soon-count", dueSoon.length);
             updateReminderCount("reminder-upcoming-later-count", upcomingLater.length);
-
-            const fallbackList = document.getElementById("upcoming-reminders-list");
-            if (fallbackList) {
-                fallbackList.innerHTML = reminders.length
-                    ? reminders.map(reminder => `<li><strong>${escapeHtml(reminder.name)}</strong> — ${escapeHtml(reminder.relativeLabel)}</li>`).join("")
-                    : `<li class="empty-state">No service reminders right now.</li>`;
-            }
 
             renderReminderGroupList("reminders-overdue-list", overdue, "No overdue reminders.");
             renderReminderGroupList("reminders-due-soon-list", dueSoon, "No reminders due this week.");
