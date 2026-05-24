@@ -189,8 +189,135 @@ document.addEventListener("DOMContentLoaded", function () {
             attention: 35,
             outOfService: 20
         };
-        const ASSETS_MODAL_COLUMNS = ["Name", "Type", "Status", "Health", "VIN", "Year", "Color", "Added", "Actions"];
+        const SERVICE_EVENT_OPERATIONS = new Set(["service", "maintenance", "repair", "parts change"]);
+        const ASSETS_MODAL_COLUMNS = ["Select", "Name", "Type", "Status", "Health", "Latest Cost", "VIN", "Year", "Color", "Added", "Actions"];
         let activeAssetFilter = "all";
+        let activeAssetSearchQuery = "";
+        let selectedAssetIds = new Set();
+
+        function isServiceEvent(event) {
+            return SERVICE_EVENT_OPERATIONS.has(String(event?.operation || event?.type || "").toLowerCase());
+        }
+
+        function parseCostValue(value) {
+            const parsed = Number.parseFloat(value);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+        }
+
+        function formatCurrency(value) {
+            const amount = Number(value) || 0;
+            return amount.toLocaleString(undefined, { style: "currency", currency: "USD" });
+        }
+
+        function getLatestServiceCost(asset) {
+            const history = Array.isArray(asset?.history) ? [...asset.history] : [];
+            history.sort((a, b) => new Date(b.date) - new Date(a.date));
+            const fromHistory = history.find(ev => parseCostValue(ev.serviceCost) > 0);
+            return fromHistory ? parseCostValue(fromHistory.serviceCost) : parseCostValue(asset?.serviceCost);
+        }
+
+        function getServiceCostInsightsData(assets = getStoredAssets()) {
+            const now = Date.now();
+            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+            let totalCost = 0;
+            let recentCost = 0;
+            let serviceEventsWithCost = 0;
+            const assetSpend = {};
+
+            assets.forEach(asset => {
+                let assetTotal = 0;
+                let hasHistoryCost = false;
+                (asset.history || []).forEach(ev => {
+                    if (!isServiceEvent(ev)) return;
+                    const eventCost = parseCostValue(ev.serviceCost);
+                    if (eventCost <= 0) return;
+                    hasHistoryCost = true;
+                    serviceEventsWithCost++;
+                    totalCost += eventCost;
+                    assetTotal += eventCost;
+                    const eventDate = new Date(ev.date);
+                    if (!isNaN(eventDate.getTime()) && (now - eventDate.getTime()) <= thirtyDaysMs) {
+                        recentCost += eventCost;
+                    }
+                });
+                if (!hasHistoryCost) {
+                    const fallbackCost = parseCostValue(asset.serviceCost);
+                    if (fallbackCost > 0) {
+                        totalCost += fallbackCost;
+                        assetTotal += fallbackCost;
+                    }
+                }
+                if (assetTotal > 0) {
+                    assetSpend[asset.name || "Unnamed Asset"] = assetTotal;
+                }
+            });
+
+            let highestCostAsset = "—";
+            let highestCostValue = 0;
+            Object.entries(assetSpend).forEach(([assetName, spend]) => {
+                if (spend > highestCostValue) {
+                    highestCostValue = spend;
+                    highestCostAsset = assetName;
+                }
+            });
+
+            const avgCostPerService = serviceEventsWithCost ? totalCost / serviceEventsWithCost : 0;
+            return { totalCost, recentCost, highestCostAsset, highestCostValue, avgCostPerService, serviceEventsWithCost, assetSpend };
+        }
+
+        function renderServiceCostInsights(assets = getStoredAssets(), insights = getServiceCostInsightsData(assets)) {
+            const container = document.getElementById("service-cost-insights");
+            if (!container) return;
+            const highCostAssetText = insights.highestCostValue > 0
+                ? `${escapeHtml(insights.highestCostAsset)} (${formatCurrency(insights.highestCostValue)})`
+                : "—";
+
+            container.innerHTML = `
+                <div class="service-cost-card">
+                    <span class="service-cost-label">Total Service Spend</span>
+                    <strong class="service-cost-value">${formatCurrency(insights.totalCost)}</strong>
+                </div>
+                <div class="service-cost-card">
+                    <span class="service-cost-label">Spend (Last 30 Days)</span>
+                    <strong class="service-cost-value">${formatCurrency(insights.recentCost)}</strong>
+                </div>
+                <div class="service-cost-card">
+                    <span class="service-cost-label">Average Cost per Service</span>
+                    <strong class="service-cost-value">${formatCurrency(insights.avgCostPerService)}</strong>
+                </div>
+                <div class="service-cost-card">
+                    <span class="service-cost-label">High-Cost Asset</span>
+                    <strong class="service-cost-value">${highCostAssetText}</strong>
+                </div>
+            `;
+        }
+
+        function escapeRegExp(value) {
+            return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        }
+
+        function highlightSearchMatch(value, query) {
+            const text = String(value ?? "");
+            const normalizedQuery = String(query || "").trim();
+            if (!normalizedQuery) return escapeHtml(text);
+            const pattern = new RegExp(`(${escapeRegExp(normalizedQuery)})`, "ig");
+            return escapeHtml(text).replace(pattern, "<mark class=\"search-highlight\">$1</mark>");
+        }
+
+        function assetMatchesQuery(asset, query) {
+            const q = String(query || "").trim().toLowerCase();
+            if (!q) return true;
+            return [
+                asset?.name,
+                asset?.type,
+                asset?.status,
+                asset?.vin,
+                asset?.year,
+                asset?.color,
+                asset?.technician,
+                asset?.location
+            ].some(value => String(value || "").toLowerCase().includes(q));
+        }
 
         function getAssetStatusInfo(asset, now = new Date()) {
             const statusText = (asset.status || "Active").trim();
@@ -288,6 +415,7 @@ document.addEventListener("DOMContentLoaded", function () {
             let overdueServices = 0;
             let upcomingServices = 0;
             const serviceCounts = {};
+            const costInsights = getServiceCostInsightsData(assets);
 
             assets.forEach(asset => {
                 const statusInfo = getAssetStatusInfo(asset, now);
@@ -295,7 +423,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (statusInfo.isDueSoon) upcomingServices++;
 
                 (asset.history || []).forEach(ev => {
-                    if (["service", "maintenance", "repair", "parts change"].includes((ev.operation || ev.type || "").toLowerCase())) {
+                    if (isServiceEvent(ev)) {
                         serviceCounts[asset.name] = (serviceCounts[asset.name] || 0) + 1;
                         if (ev.note && ev.note.toLowerCase().includes("completed")) {
                             completedServices++;
@@ -318,6 +446,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 { label: "Overdue Services", value: overdueServices, action: "open-overdue-assets" },
                 { label: "Upcoming Services", value: upcomingServices, action: "open-due-soon-assets" },
                 { label: "Completed Services", value: completedServices, action: "open-service-summary" },
+                { label: "Total Service Spend", value: formatCurrency(costInsights.totalCost), detail: "Cost insights", action: "open-analytics" },
                 { label: "Most Serviced Asset", value: mostServicedAsset || "-", detail: mostServicedCount ? `${mostServicedCount} service events` : "No service events yet", action: "open-most-serviced-asset", assetName: mostServicedAsset || "" }
             ];
 
@@ -370,6 +499,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 if (action === "open-service-summary") {
                     showReportSection("service-summary");
+                    return;
+                }
+                if (action === "open-analytics") {
+                    const analyticsSection = document.getElementById("analytics-section");
+                    if (analyticsSection) analyticsSection.scrollIntoView({ behavior: "smooth", block: "start" });
                     return;
                 }
                 if (action === "open-most-serviced-asset") {
@@ -522,7 +656,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const today = new Date();
             assets.forEach(asset => {
                 (asset.history || []).forEach(ev => {
-                    if (["service", "maintenance", "repair", "parts change"].includes((ev.operation || ev.type || "").toLowerCase())) {
+                    if (isServiceEvent(ev)) {
                         totalServices++;
                         const evDate = new Date(ev.date);
                         if (evDate < today && ev.note && ev.note.toLowerCase().includes("overdue")) overdue++;
@@ -537,6 +671,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 ss.querySelector("p:nth-of-type(2)").textContent = `Overdue Services: ${overdue}`;
                 ss.querySelector("p:nth-of-type(3)").textContent = `Upcoming Services: ${upcoming}`;
                 ss.querySelector("p:nth-of-type(4)").textContent = `Completed Services: ${completed}`;
+                const costInsights = getServiceCostInsightsData(assets);
+                ss.querySelector("p:nth-of-type(5)").textContent = `Total Service Spend: ${formatCurrency(costInsights.totalCost)}`;
+                ss.querySelector("p:nth-of-type(6)").textContent = `Highest Service Spend Asset: ${costInsights.highestCostValue > 0 ? `${costInsights.highestCostAsset} (${formatCurrency(costInsights.highestCostValue)})` : "—"}`;
             }
         }
         function renderAssetPerformance() {
@@ -544,8 +681,9 @@ document.addEventListener("DOMContentLoaded", function () {
             let totalIntervals = 0, intervalCount = 0;
             let freqMap = {};
             assets.forEach(asset => {
-                const history = (asset.history || []).filter(ev => ["service", "maintenance", "repair", "parts change"].includes((ev.operation || ev.type || "").toLowerCase())
-                ).sort((a, b) => new Date(a.date) - new Date(b.date));
+                const history = (asset.history || [])
+                    .filter(ev => isServiceEvent(ev))
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
                 for (let i = 1; i < history.length; i++) {
                     const prev = new Date(history[i - 1].date);
                     const curr = new Date(history[i].date);
@@ -579,7 +717,7 @@ document.addEventListener("DOMContentLoaded", function () {
             let log = [];
             assets.forEach(asset => {
                 (asset.history || []).forEach(ev => {
-                    if (["service", "maintenance", "repair", "parts change"].includes((ev.operation || ev.type || "").toLowerCase())) {
+                    if (isServiceEvent(ev)) {
                         log.push({
                             date: new Date(ev.date),
                             asset: asset.name,
@@ -663,76 +801,169 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
         // --- ANALYTICS COLLABORATION FEATURES ---
+        const analyticsChartInstances = {};
+        function destroyAnalyticsChart(containerId) {
+            if (analyticsChartInstances[containerId]) {
+                analyticsChartInstances[containerId].destroy();
+                delete analyticsChartInstances[containerId];
+            }
+        }
+
+        function renderChartWithFallback({ containerId, chartConfig, fallbackHtml }) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            if (window.Chart && chartConfig) {
+                container.innerHTML = `<canvas></canvas>`;
+                const ctx = container.querySelector("canvas").getContext("2d");
+                destroyAnalyticsChart(containerId);
+                analyticsChartInstances[containerId] = new Chart(ctx, chartConfig);
+                return;
+            }
+            destroyAnalyticsChart(containerId);
+            container.innerHTML = fallbackHtml;
+        }
+
         function renderServiceTrendsChart() {
-            const chartDiv = document.getElementById("service-trends-chart");
-            if (!chartDiv) return;
-            if (window.Chart) {
-                chartDiv.innerHTML = `<canvas id="serviceTrendsCanvas" width="400" height="200"></canvas>`;
-                const ctx = document.getElementById('serviceTrendsCanvas').getContext('2d');
-                const assets = getStoredAssets();
-                const now = new Date();
-                const months = [];
-                const monthLabels = [];
-                for (let i = 5; i >= 0; i--) {
-                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                    const label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-                    months.push({ year: d.getFullYear(), month: d.getMonth(), label });
-                    monthLabels.push(label);
-                }
-                const counts = months.map(m => {
-                    let count = 0;
-                    assets.forEach(asset => {
-                        (asset.history || []).forEach(ev => {
-                            const evDate = new Date(ev.date);
-                            if (evDate.getFullYear() === m.year &&
-                                evDate.getMonth() === m.month &&
-                                ["service", "maintenance", "repair", "parts change"].includes((ev.operation || ev.type || "").toLowerCase())) {
-                                count++;
-                            }
-                        });
+            const assets = getStoredAssets();
+            const now = new Date();
+            const months = [];
+            const monthLabels = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const label = d.toLocaleString("default", { month: "short", year: "2-digit" });
+                months.push({ year: d.getFullYear(), month: d.getMonth(), label });
+                monthLabels.push(label);
+            }
+
+            const serviceCounts = months.map(m => {
+                let count = 0;
+                assets.forEach(asset => {
+                    (asset.history || []).forEach(ev => {
+                        const evDate = new Date(ev.date);
+                        if (isServiceEvent(ev) && evDate.getFullYear() === m.year && evDate.getMonth() === m.month) {
+                            count++;
+                        }
                     });
-                    return count;
                 });
+                return count;
+            });
 
-                if (!counts.some(count => count > 0)) {
-                    chartDiv.innerHTML = `<p class="empty-state">No service trend data yet. Add service events to populate this chart.</p>`;
-                    return;
-                }
+            const monthlyCosts = months.map(m => {
+                let total = 0;
+                assets.forEach(asset => {
+                    (asset.history || []).forEach(ev => {
+                        const evDate = new Date(ev.date);
+                        if (isServiceEvent(ev) && evDate.getFullYear() === m.year && evDate.getMonth() === m.month) {
+                            total += parseCostValue(ev.serviceCost);
+                        }
+                    });
+                });
+                return Number(total.toFixed(2));
+            });
 
-                new Chart(ctx, {
-                    type: 'line',
+            const statusCounts = { Active: 0, Inactive: 0, "Out of Service": 0, Other: 0 };
+            const dueCounts = { Overdue: 0, "Due Soon": 0, "On Track": 0 };
+            assets.forEach(asset => {
+                const status = (asset.status || "Active").trim().toLowerCase();
+                if (status === "active") statusCounts.Active++;
+                else if (status === "inactive") statusCounts.Inactive++;
+                else if (["out of service", "out-of-service"].includes(status)) statusCounts["Out of Service"]++;
+                else statusCounts.Other++;
+
+                const info = getAssetStatusInfo(asset);
+                if (info.isOverdue) dueCounts.Overdue++;
+                else if (info.isDueSoon) dueCounts["Due Soon"]++;
+                else dueCounts["On Track"]++;
+            });
+
+            renderChartWithFallback({
+                containerId: "service-trends-chart",
+                chartConfig: serviceCounts.some(count => count > 0) ? {
+                    type: "line",
                     data: {
                         labels: monthLabels,
                         datasets: [{
-                            label: 'Number of Services',
-                            data: counts,
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            label: "Services",
+                            data: serviceCounts,
+                            borderColor: "rgba(75, 192, 192, 1)",
+                            backgroundColor: "rgba(75, 192, 192, 0.2)",
                             fill: true,
                             tension: 0.3
                         }]
                     },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            y: { beginAtZero: true }
-                        }
-                    }
-                });
-            } else {
-                chartDiv.textContent = "Service trend data will appear here when Chart.js is available.";
-            }
+                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+                } : null,
+                fallbackHtml: serviceCounts.some(count => count > 0)
+                    ? `<ul class="chart-fallback-list">${monthLabels.map((label, idx) => `<li>${escapeHtml(label)}: <strong>${serviceCounts[idx]}</strong></li>`).join("")}</ul>`
+                    : `<p class="empty-state">No service trend data yet. Add service events to populate this chart.</p>`
+            });
+
+            renderChartWithFallback({
+                containerId: "status-distribution-chart",
+                chartConfig: assets.length ? {
+                    type: "doughnut",
+                    data: {
+                        labels: Object.keys(statusCounts),
+                        datasets: [{
+                            data: Object.values(statusCounts),
+                            backgroundColor: ["#2e8b57", "#8a93a0", "#c24d4d", "#5e7da5"]
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+                } : null,
+                fallbackHtml: assets.length
+                    ? `<ul class="chart-fallback-list">${Object.entries(statusCounts).map(([label, value]) => `<li>${escapeHtml(label)}: <strong>${value}</strong></li>`).join("")}</ul>`
+                    : `<p class="empty-state">Add assets to view status distribution.</p>`
+            });
+
+            renderChartWithFallback({
+                containerId: "due-overview-chart",
+                chartConfig: assets.length ? {
+                    type: "bar",
+                    data: {
+                        labels: Object.keys(dueCounts),
+                        datasets: [{
+                            label: "Assets",
+                            data: Object.values(dueCounts),
+                            backgroundColor: ["#cf4f4f", "#e3a432", "#4f8dcf"]
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+                } : null,
+                fallbackHtml: assets.length
+                    ? `<ul class="chart-fallback-list">${Object.entries(dueCounts).map(([label, value]) => `<li>${escapeHtml(label)}: <strong>${value}</strong></li>`).join("")}</ul>`
+                    : `<p class="empty-state">Add assets to view due-state distribution.</p>`
+            });
+
+            renderChartWithFallback({
+                containerId: "service-cost-chart",
+                chartConfig: monthlyCosts.some(cost => cost > 0) ? {
+                    type: "bar",
+                    data: {
+                        labels: monthLabels,
+                        datasets: [{
+                            label: "Cost",
+                            data: monthlyCosts,
+                            backgroundColor: "rgba(72, 128, 196, 0.6)",
+                            borderColor: "rgba(72, 128, 196, 1)",
+                            borderWidth: 1
+                        }]
+                    },
+                    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+                } : null,
+                fallbackHtml: monthlyCosts.some(cost => cost > 0)
+                    ? `<ul class="chart-fallback-list">${monthLabels.map((label, idx) => `<li>${escapeHtml(label)}: <strong>${formatCurrency(monthlyCosts[idx])}</strong></li>`).join("")}</ul>`
+                    : `<p class="empty-state">Service cost trend data appears once service costs are recorded.</p>`
+            });
+
+            renderServiceCostInsights(assets);
         }
         function renderPredictiveMaintenance() {
             const assets = getStoredAssets();
             const today = new Date();
             const soonAssets = assets
                 .map(a => {
-                    const history = (a.history || []).filter(ev => ["service", "maintenance", "repair", "parts change"].includes((ev.operation || ev.type || "").toLowerCase())
-                    );
+                    const history = (a.history || []).filter(ev => isServiceEvent(ev));
                     if (history.length === 0) return { ...a, lastService: null, predicted: null };
                     const lastEvent = history.reduce((latest, ev) => (latest && new Date(latest.date) > new Date(ev.date)) ? latest : ev,
                         null);
@@ -985,7 +1216,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // --- View All Assets ---
         const viewAllAssetsBtn = document.getElementById("view-all-assets");
-        function renderAssetsModal(filter = activeAssetFilter) {
+        function renderAssetsModal(filter = activeAssetFilter, searchQuery = activeAssetSearchQuery) {
             let modal = document.getElementById("view-assets-modal");
             if (!modal) {
                 modal = document.createElement("div");
@@ -1005,23 +1236,29 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             activeAssetFilter = filter || "all";
+            activeAssetSearchQuery = String(searchQuery || "").trim();
             renderDashboardQuickFilters();
             const assets = getStoredAssets();
+            const validAssetIds = new Set(assets.map(asset => asset.id));
+            selectedAssetIds = new Set([...selectedAssetIds].filter(assetId => validAssetIds.has(assetId)));
             const filteredAssets = assets
                 .map((asset, index) => ({ asset, index }))
-                .filter(({ asset }) => matchesAssetFilter(asset, activeAssetFilter));
+                .filter(({ asset }) => matchesAssetFilter(asset, activeAssetFilter))
+                .filter(({ asset }) => assetMatchesQuery(asset, activeAssetSearchQuery));
             const tableHeaderHtml = ASSETS_MODAL_COLUMNS.map(column => `<th>${column}</th>`).join("");
 
             const tableRows = filteredAssets.length
                 ? filteredAssets.map(({ asset, index }) => `
                         <tr>
-                            <td>${escapeHtml(asset.name || "—")}</td>
-                            <td>${escapeHtml(asset.type || "—")}</td>
+                            <td><input type="checkbox" data-select-asset="${escapeHtml(asset.id)}"${selectedAssetIds.has(asset.id) ? " checked" : ""}></td>
+                            <td>${highlightSearchMatch(asset.name || "—", activeAssetSearchQuery)}</td>
+                            <td>${highlightSearchMatch(asset.type || "—", activeAssetSearchQuery)}</td>
                             <td>${renderStatusBadge(asset.status || "—")}</td>
                             <td>${renderHealthIndicator(asset)}</td>
-                            <td>${escapeHtml(asset.vin || "—")}</td>
-                            <td>${escapeHtml(asset.year || "—")}</td>
-                            <td>${escapeHtml(asset.color || "—")}</td>
+                            <td>${highlightSearchMatch(getLatestServiceCost(asset) > 0 ? formatCurrency(getLatestServiceCost(asset)) : "—", activeAssetSearchQuery)}</td>
+                            <td>${highlightSearchMatch(asset.vin || "—", activeAssetSearchQuery)}</td>
+                            <td>${highlightSearchMatch(asset.year || "—", activeAssetSearchQuery)}</td>
+                            <td>${highlightSearchMatch(asset.color || "—", activeAssetSearchQuery)}</td>
                             <td>${escapeHtml(formatDisplayDate(asset.created || asset.lastServiceDate))}</td>
                             <td>
                                 <button type="button" data-edit-asset="${index}">Edit</button>
@@ -1040,6 +1277,23 @@ document.addEventListener("DOMContentLoaded", function () {
                         <h2>All Assets</h2>
                         <div class="asset-filter-chips">
                             ${modalFilterChips}
+                        </div>
+                        <div class="asset-live-search-row">
+                            <input type="search" id="asset-live-search" placeholder="Live search assets..." value="${escapeHtml(activeAssetSearchQuery)}">
+                            <button type="button" id="asset-search-clear">Clear</button>
+                        </div>
+                        <div class="asset-bulk-actions">
+                            <label class="asset-select-all-toggle"><input type="checkbox" id="select-all-assets"> Select all visible</label>
+                            <span id="selected-assets-count">${selectedAssetIds.size} selected</span>
+                            <select id="bulk-status-select">
+                                <option value="">Bulk status…</option>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="Out of Service">Out of Service</option>
+                            </select>
+                            <button type="button" data-bulk-action="set-status">Apply Status</button>
+                            <button type="button" data-bulk-action="export-json">Export Selected</button>
+                            <button type="button" data-bulk-action="clear-selection">Clear Selection</button>
                         </div>
                         <div class="asset-filter-summary">Showing ${filteredAssets.length} of ${assets.length} assets</div>
                         <div style="max-height:60vh; overflow-y:auto;">
@@ -1065,6 +1319,102 @@ document.addEventListener("DOMContentLoaded", function () {
             modal.querySelectorAll("button[data-delete-asset]").forEach(btn => {
                 btn.addEventListener("click", () => deleteAsset(parseInt(btn.getAttribute("data-delete-asset"), 10)));
             });
+
+            const liveSearchInput = modal.querySelector("#asset-live-search");
+            if (liveSearchInput) {
+                liveSearchInput.addEventListener("input", () => {
+                    renderAssetsModal(activeAssetFilter, liveSearchInput.value);
+                });
+            }
+            const clearSearchBtn = modal.querySelector("#asset-search-clear");
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener("click", () => renderAssetsModal(activeAssetFilter, ""));
+            }
+
+            const filteredAssetIds = filteredAssets.map(({ asset }) => asset.id);
+            const selectedCountNode = modal.querySelector("#selected-assets-count");
+            const selectAllToggle = modal.querySelector("#select-all-assets");
+            const updateSelectionUi = () => {
+                const selectedVisibleCount = filteredAssetIds.filter(assetId => selectedAssetIds.has(assetId)).length;
+                if (selectedCountNode) selectedCountNode.textContent = `${selectedAssetIds.size} selected`;
+                if (selectAllToggle) {
+                    selectAllToggle.checked = filteredAssetIds.length > 0 && selectedVisibleCount === filteredAssetIds.length;
+                    selectAllToggle.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < filteredAssetIds.length;
+                }
+            };
+
+            if (selectAllToggle) {
+                selectAllToggle.addEventListener("change", () => {
+                    filteredAssetIds.forEach(assetId => {
+                        if (selectAllToggle.checked) selectedAssetIds.add(assetId);
+                        else selectedAssetIds.delete(assetId);
+                    });
+                    renderAssetsModal(activeAssetFilter, activeAssetSearchQuery);
+                });
+            }
+
+            modal.querySelectorAll("input[data-select-asset]").forEach(checkbox => {
+                checkbox.addEventListener("change", () => {
+                    const assetId = checkbox.getAttribute("data-select-asset");
+                    if (!assetId) return;
+                    if (checkbox.checked) selectedAssetIds.add(assetId);
+                    else selectedAssetIds.delete(assetId);
+                    updateSelectionUi();
+                });
+            });
+
+            modal.querySelectorAll("button[data-bulk-action]").forEach(button => {
+                button.addEventListener("click", () => {
+                    const action = button.getAttribute("data-bulk-action");
+                    if (action === "clear-selection") {
+                        selectedAssetIds.clear();
+                        renderAssetsModal(activeAssetFilter, activeAssetSearchQuery);
+                        return;
+                    }
+                    const selectedAssets = assets.filter(asset => selectedAssetIds.has(asset.id));
+                    if (!selectedAssets.length) {
+                        showFeedback("Select at least one asset for bulk actions.", "info");
+                        return;
+                    }
+                    if (action === "export-json") {
+                        const payload = JSON.stringify(selectedAssets, null, 2);
+                        const blob = new Blob([payload], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = "selected-assets.json";
+                        link.click();
+                        URL.revokeObjectURL(url);
+                        showFeedback(`Exported ${selectedAssets.length} assets.`, "success");
+                        return;
+                    }
+                    if (action === "set-status") {
+                        const statusSelect = modal.querySelector("#bulk-status-select");
+                        const nextStatus = statusSelect ? statusSelect.value : "";
+                        if (!nextStatus) {
+                            showFeedback("Choose a status before applying the bulk update.", "error");
+                            return;
+                        }
+                        const updatedAt = new Date().toISOString();
+                        const updatedAssets = assets.map(asset => {
+                            if (!selectedAssetIds.has(asset.id)) return asset;
+                            const history = Array.isArray(asset.history) ? [...asset.history] : [];
+                            history.push({
+                                date: updatedAt,
+                                operation: "Updated",
+                                label: "Status",
+                                note: `Bulk status update to ${nextStatus}`
+                            });
+                            return normalizeAsset({ ...asset, status: nextStatus, history });
+                        });
+                        saveStoredAssets(updatedAssets);
+                        refreshAssetDependentViews();
+                        showFeedback(`Updated status for ${selectedAssets.length} assets.`, "success");
+                        renderAssetsModal(activeAssetFilter, activeAssetSearchQuery);
+                    }
+                });
+            });
+            updateSelectionUi();
         }
 
         function openEditAssetModal(assetIndex) {
@@ -1201,6 +1551,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             const shouldCloseDetails = isAssetShownInDetailsModal(asset);
+            if (asset.id) selectedAssetIds.delete(asset.id);
             assets.splice(assetIndex, 1);
             saveStoredAssets(assets);
             refreshAssetDependentViews();
@@ -1302,34 +1653,49 @@ document.addEventListener("DOMContentLoaded", function () {
         const globalSearchBar = document.getElementById("global-search-bar");
         const globalSearchBtn = document.getElementById("global-search-button");
         if (globalSearchBtn && globalSearchBar) {
-            globalSearchBtn.addEventListener("click", () => {
-                const query = globalSearchBar.value.trim().toLowerCase();
-                if (!query) {
-                    showFeedback("Please enter a search term.", "error");
+            let globalSearchDebounce = null;
+            const runAssetSearch = ({ query, triggerSource = "button" }) => {
+                const normalizedQuery = String(query || "").trim();
+                if (!normalizedQuery) {
+                    if (triggerSource === "button") showFeedback("Please enter a search term.", "error");
                     return;
                 }
                 const assets = getStoredAssets();
-                const matched = assets.filter(
-                    a => a && typeof a.name === "string" && (
-                        a.name.toLowerCase().includes(query) ||
-                        (a.type || "").toLowerCase().includes(query) ||
-                        (a.status || "").toLowerCase().includes(query) ||
-                        (a.vin || "").toLowerCase().includes(query) ||
-                        (a.year ? String(a.year).toLowerCase() : "").includes(query) ||
-                        (a.color || "").toLowerCase().includes(query)
-                    )
-                );
+                const matched = assets.filter(asset => assetMatchesQuery(asset, normalizedQuery));
                 if (matched.length === 0) {
-                    showFeedback("No matching assets found.", "info");
+                    if (triggerSource === "button") showFeedback("No matching assets found.", "info");
                     return;
                 }
-                showAssetDetailsAndHistory(matched[0]);
+
+                if (triggerSource === "button" && matched.length === 1) {
+                    showAssetDetailsAndHistory(matched[0]);
+                    return;
+                }
+
+                activeAssetFilter = "all";
+                renderAssetsModal("all", normalizedQuery);
+                if (triggerSource === "button") {
+                    showFeedback(`Showing ${matched.length} matching asset${matched.length === 1 ? "" : "s"}.`, "success");
+                }
+            };
+
+            globalSearchBtn.addEventListener("click", () => {
+                runAssetSearch({ query: globalSearchBar.value, triggerSource: "button" });
             });
 
             globalSearchBar.addEventListener("keydown", (e) => {
                 if (e.key === "Enter") {
                     globalSearchBtn.click();
                 }
+            });
+
+            globalSearchBar.addEventListener("input", () => {
+                if (globalSearchDebounce) clearTimeout(globalSearchDebounce);
+                const query = globalSearchBar.value;
+                globalSearchDebounce = setTimeout(() => {
+                    if (String(query || "").trim().length < 2) return;
+                    runAssetSearch({ query, triggerSource: "live" });
+                }, 180);
             });
         }
 
@@ -1356,20 +1722,49 @@ document.addEventListener("DOMContentLoaded", function () {
             modal.dataset.assetCreated = asset.created || asset.lastServiceDate || "";
             modal.dataset.assetVin = asset.vin || "";
 
-            // Build history rows
-            let historyRows = asset.history && asset.history.length
-                ? asset.history.map((h, i) => `
-                <tr>
-                    <td>${escapeHtml(formatDisplayDate(h.date, ""))}</td>
-                    <td>${escapeHtml(h.operation || "")}</td>
-                    <td>${escapeHtml(h.label || "")}</td>
-                    <td>${escapeHtml(h.note || "")}</td>
-                    <td>
-                        <button data-edit="${i}">Edit</button>
-                    </td>
-                </tr>
-            `).join("")
-                : `<tr><td colspan="5" class="empty-state-cell">No history events recorded yet.</td></tr>`;
+            const getHistoryEventVisual = (operation) => {
+                const normalizedOperation = String(operation || "").toLowerCase();
+                if (normalizedOperation.includes("created")) return { icon: "🆕", badgeClass: "history-badge-created" };
+                if (normalizedOperation.includes("updated") || normalizedOperation.includes("edit")) return { icon: "✏️", badgeClass: "history-badge-updated" };
+                if (normalizedOperation.includes("maintenance")) return { icon: "🔧", badgeClass: "history-badge-maintenance" };
+                if (normalizedOperation.includes("repair")) return { icon: "🛠️", badgeClass: "history-badge-repair" };
+                if (normalizedOperation.includes("service") || normalizedOperation.includes("parts")) return { icon: "🧰", badgeClass: "history-badge-service" };
+                return { icon: "📌", badgeClass: "history-badge-generic" };
+            };
+
+            const sortedHistory = (asset.history || [])
+                .map((event, index) => ({ event, index }))
+                .sort((left, right) => new Date(right.event.date) - new Date(left.event.date));
+            let previousTimelineGroup = "";
+            const historyTimelineHtml = sortedHistory.length
+                ? sortedHistory.map(({ event, index }) => {
+                    const eventDate = new Date(event.date);
+                    const timelineGroup = !isNaN(eventDate.getTime())
+                        ? eventDate.toLocaleString(undefined, { month: "long", year: "numeric" })
+                        : "Undated";
+                    const showGroupHeader = timelineGroup !== previousTimelineGroup;
+                    previousTimelineGroup = timelineGroup;
+                    const visual = getHistoryEventVisual(event.operation || event.type);
+                    const operationText = String(event.operation || event.type || "Event").trim();
+                    return `
+                        ${showGroupHeader ? `<li class="history-group-label">${escapeHtml(timelineGroup)}</li>` : ""}
+                        <li class="history-timeline-item">
+                            <div class="history-timeline-dot" aria-hidden="true">${visual.icon}</div>
+                            <div class="history-timeline-content">
+                                <div class="history-timeline-main">
+                                    <span class="history-operation-badge ${visual.badgeClass}">${escapeHtml(operationText || "Event")}</span>
+                                    ${event.label ? `<span class="history-label-pill">${escapeHtml(event.label)}</span>` : ""}
+                                </div>
+                                <div class="history-timeline-note">${escapeHtml(event.note || "No additional note provided.")}</div>
+                                <div class="history-timeline-meta">
+                                    <span>${escapeHtml(formatDisplayDate(event.date, "Unknown date"))}</span>
+                                    <button type="button" data-edit="${index}">Edit</button>
+                                </div>
+                            </div>
+                        </li>
+                    `;
+                }).join("")
+                : `<li class="empty-state">No history events recorded yet.</li>`;
 
             // Service status info for emphasis
             const statusInfo = getAssetStatusInfo(asset);
@@ -1431,28 +1826,31 @@ document.addEventListener("DOMContentLoaded", function () {
                         <span class="asset-detail-field-value">${escapeHtml(asset.color || "—")}</span>
                     </div>
                     <div class="asset-detail-field">
+                        <span class="asset-detail-field-label">Technician</span>
+                        <span class="asset-detail-field-value">${escapeHtml(asset.technician || "—")}</span>
+                    </div>
+                    <div class="asset-detail-field">
+                        <span class="asset-detail-field-label">Location</span>
+                        <span class="asset-detail-field-value">${escapeHtml(asset.location || "—")}</span>
+                    </div>
+                    <div class="asset-detail-field">
+                        <span class="asset-detail-field-label">Latest Service Cost</span>
+                        <span class="asset-detail-field-value">${getLatestServiceCost(asset) > 0 ? escapeHtml(formatCurrency(getLatestServiceCost(asset))) : "—"}</span>
+                    </div>
+                    <div class="asset-detail-field">
                         <span class="asset-detail-field-label">Added</span>
                         <span class="asset-detail-field-value">${escapeHtml(formatDisplayDate(asset.created || asset.lastServiceDate))}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Service History table -->
+            <!-- Service History timeline -->
             <div class="asset-detail-section">
-                <h3>Service History</h3>
-                <div class="asset-detail-history-wrap">
-                    <table style="width:100%;border-collapse:collapse;" border="1">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Operation</th>
-                                <th>Label</th>
-                                <th>Note</th>
-                                <th>Edit</th>
-                            </tr>
-                        </thead>
-                        <tbody>${historyRows}</tbody>
-                    </table>
+                <h3>Service History Timeline</h3>
+                <div class="asset-history-timeline-wrap">
+                    <ul class="asset-history-timeline">
+                        ${historyTimelineHtml}
+                    </ul>
                 </div>
             </div>
 
