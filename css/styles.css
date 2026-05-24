@@ -124,12 +124,13 @@ nav {
 .dropdown-menu {
   display: none;
   position: absolute; 
-  top: 100%; 
+  /* slight overlap prevents a hover gap between trigger and menu */
+  top: calc(100% - 2px);
   left: 50%; 
   transform: translateX(-50%); 
   background-color: #005a9e;
   padding: 10px;
-  margin-top: 5px;
+  margin-top: 0;
   border-radius: 5px;
   z-index: 10;
   min-width: 200px; 
@@ -139,7 +140,8 @@ nav {
 .dropdown-menu li {
   margin: 5px 0;
 }
-.dropdown:hover .dropdown-menu {
+.dropdown:hover .dropdown-menu,
+.dropdown:focus-within .dropdown-menu {
   display: block;
 }
 
@@ -153,6 +155,37 @@ nav {
 
 .dropdown-menu a:hover {
   background-color: #0078d4;
+}
+
+.dropdown-submenu {
+  position: relative;
+}
+
+.dropdown-submenu-items {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: calc(100% + 4px);
+  min-width: 180px;
+  list-style: none;
+  background-color: #005a9e;
+  border-radius: 5px;
+  padding: 8px;
+  z-index: 12;
+}
+
+.dropdown-submenu:hover .dropdown-submenu-items,
+.dropdown-submenu:focus-within .dropdown-submenu-items {
+  display: block;
+}
+
+.dropdown-submenu-items li {
+  margin: 4px 0;
+}
+
+.dropdown-submenu-items .import-button,
+.dropdown-submenu-items button {
+  width: 100%;
 }
 
 /* Reminder Notification Bar Styling */
@@ -200,6 +233,51 @@ nav {
   margin-bottom: 0.8em;
   font-size: 1em;
   line-height: 1.2;
+}
+
+.empty-state {
+  color: #5f6b78;
+  font-style: italic;
+}
+
+.empty-state-cell {
+  text-align: center;
+  color: #5f6b78;
+  font-style: italic;
+}
+
+.feedback-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  max-width: min(90vw, 360px);
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 4000;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.feedback-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.feedback-toast.feedback-success {
+  background: #1f8f49;
+}
+
+.feedback-toast.feedback-error {
+  background: #b63a3a;
+}
+
+.feedback-toast.feedback-info {
+  background: #245f97;
 }
 
 /*Quick Statistics Section */
@@ -495,6 +573,13 @@ table td {
     width: 100%;
   }
 
+  .dropdown-submenu-items {
+    position: static;
+    left: auto;
+    margin-top: 6px;
+    width: 100%;
+  }
+
   section,
   .report-section {
     padding: 16px;
@@ -602,6 +687,11 @@ body.dark-mode {
   background-color: #344556;
 }
 
+.dark-mode .dropdown-submenu-items {
+  background-color: #253140;
+  border: 1px solid #344556;
+}
+
 .dark-mode section,
 .dark-mode .report-section,
 .dark-mode .stat-item,
@@ -658,6 +748,23 @@ body.dark-mode {
 .dark-mode input::placeholder,
 .dark-mode textarea::placeholder {
   color: #8fa3b8;
+}
+
+.dark-mode .empty-state,
+.dark-mode .empty-state-cell {
+  color: #9cb0c4;
+}
+
+.dark-mode .feedback-toast.feedback-success {
+  background: #2c8f55;
+}
+
+.dark-mode .feedback-toast.feedback-error {
+  background: #b64b4b;
+}
+
+.dark-mode .feedback-toast.feedback-info {
+  background: #2e5f8c;
 }
 
 .dark-mode table th {
