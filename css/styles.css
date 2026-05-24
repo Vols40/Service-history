@@ -230,11 +230,101 @@ nav {
   padding-left: 0;
   max-height: 40vh;
   overflow-y: auto;
+  display: grid;
+  gap: 10px;
 }
-.recent-activities li {
-  margin-bottom: 0.8em;
-  font-size: 1em;
-  line-height: 1.2;
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid #e5ecf3;
+  border-left: 4px solid #4f84b8;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #f9fbff;
+}
+
+.activity-icon {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eaf2fb;
+  font-size: 0.95rem;
+}
+
+.activity-content {
+  min-width: 0;
+}
+
+.activity-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.activity-asset {
+  color: #1f3e5d;
+}
+
+.activity-action {
+  color: #2f4b66;
+  font-weight: 600;
+}
+
+.activity-description {
+  margin-top: 2px;
+  font-size: 0.93rem;
+  color: #3e5469;
+  word-break: break-word;
+}
+
+.activity-note {
+  color: #56697d;
+}
+
+.activity-time {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.82rem;
+}
+
+.activity-time time {
+  color: #17588d;
+  font-weight: 600;
+}
+
+.activity-time-absolute {
+  color: #718295;
+}
+
+.activity-asset-created {
+  border-left-color: #0d9b58;
+}
+
+.activity-asset-updated {
+  border-left-color: #2f72b5;
+}
+
+.activity-service-logged,
+.activity-maintenance-recorded {
+  border-left-color: #b06a16;
+}
+
+.activity-comment {
+  border-left-color: #6b5ec4;
+}
+
+.activity-activity {
+  border-left-color: #4f84b8;
 }
 
 .empty-state {
@@ -724,6 +814,23 @@ table td {
     font-size: 1.25rem;
   }
 
+  .recent-activities {
+    top: 6%;
+    padding: 1em;
+    min-width: 0;
+    width: calc(100vw - 16px);
+  }
+
+  .activity-item {
+    padding: 9px 10px;
+  }
+
+  .activity-time {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
   .quick-actions button,
   .report-section .print-button {
     width: 100%;
@@ -873,6 +980,36 @@ body.dark-mode {
 .dark-mode .empty-state,
 .dark-mode .empty-state-cell {
   color: #9cb0c4;
+}
+
+.dark-mode .activity-item {
+  background: #1d2a37;
+  border-color: #31475c;
+}
+
+.dark-mode .activity-icon {
+  background: #2a3d50;
+}
+
+.dark-mode .activity-asset {
+  color: #d4e8fb;
+}
+
+.dark-mode .activity-action {
+  color: #bfd5ea;
+}
+
+.dark-mode .activity-description {
+  color: #adc0d2;
+}
+
+.dark-mode .activity-note,
+.dark-mode .activity-time-absolute {
+  color: #95a9bd;
+}
+
+.dark-mode .activity-time time {
+  color: #7ec0f6;
 }
 
 .dark-mode .filter-chip {

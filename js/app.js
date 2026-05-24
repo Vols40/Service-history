@@ -51,6 +51,51 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
+        function getRelativeTimeLabel(dateValue) {
+            const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+            if (isNaN(date.getTime())) return "Unknown time";
+            const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+            if (seconds < 45) return "just now";
+            if (seconds < 3600) {
+                const minutes = Math.floor(seconds / 60);
+                return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+            }
+            if (seconds < 86400) {
+                const hours = Math.floor(seconds / 3600);
+                return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+            }
+            const days = Math.floor(seconds / 86400);
+            return `${days} day${days === 1 ? "" : "s"} ago`;
+        }
+
+        function mapActivityType(operation = "", note = "") {
+            const op = String(operation || "").trim().toLowerCase();
+            const noteLower = String(note || "").toLowerCase();
+
+            if (op === "created" || noteLower.includes("asset created")) {
+                return "asset-created";
+            }
+            if (["service", "maintenance", "repair", "parts change"].includes(op)) {
+                return "service-logged";
+            }
+            if (op === "updated" || op === "edit" || op === "edited" || noteLower.includes("updated")) {
+                return "asset-updated";
+            }
+            return "activity";
+        }
+
+        function getActivityMeta(type) {
+            const meta = {
+                "asset-created": { icon: "🆕", action: "Asset created" },
+                "asset-updated": { icon: "✏️", action: "Asset updated" },
+                "service-logged": { icon: "🛠️", action: "Service logged" },
+                "maintenance-recorded": { icon: "🔧", action: "Maintenance recorded" },
+                comment: { icon: "💬", action: "Comment added" },
+                activity: { icon: "📌", action: "Activity recorded" }
+            };
+            return meta[type] || meta.activity;
+        }
+
         function renderRecentActivities(limit = 15) {
             const assets = getStoredAssets();
             const comments = JSON.parse(localStorage.getItem("assetComments") || "[]");
@@ -59,11 +104,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
             assets.forEach(asset => {
                 (asset.history || []).forEach(ev => {
+                    const eventType = mapActivityType(ev.operation || ev.type, ev.note);
+                    const normalizedType = eventType === "service-logged" && String(ev.operation || "").trim().toLowerCase() === "maintenance"
+                        ? "maintenance-recorded"
+                        : eventType;
                     activityList.push({
-                        type: "service",
+                        type: normalizedType,
                         asset: asset.name,
                         date: new Date(ev.date),
-                        detail: ev.operation ? `${ev.operation} - ${ev.label}` : "Service Event",
+                        detail: ev.operation ? `${ev.operation}${ev.label ? ` • ${ev.label}` : ""}` : "Service event",
                         note: ev.note || ""
                     });
                 });
@@ -74,7 +123,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     type: "comment",
                     asset: "",
                     date: new Date(c.date),
-                    detail: "Comment",
+                    detail: "Team note",
                     note: c.text
                 });
             });
@@ -89,13 +138,33 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            list.innerHTML = activityList.slice(0, limit).map(ev => `<li>
-                <span style="color:#888;">${ev.date.toLocaleString()}</span> &mdash;
-                ${ev.asset ? `<b>${ev.asset}:</b> ` : ""}
-                <span>${ev.detail}</span>
-                ${ev.note ? `<span style="color:#555;"> &mdash; ${ev.note}</span>` : ""}
-            </li>`
-            ).join("");
+            list.innerHTML = activityList.slice(0, limit).map(ev => {
+                const eventMeta = getActivityMeta(ev.type);
+                const relativeTime = getRelativeTimeLabel(ev.date);
+                const exactTime = formatDisplayDate(ev.date, "Unknown date");
+                const isoDate = ev.date instanceof Date && !isNaN(ev.date.getTime()) ? ev.date.toISOString() : "";
+                const safeAsset = escapeHtml(ev.asset || "General");
+                const safeDetail = escapeHtml(ev.detail || "");
+                const safeNote = escapeHtml(ev.note || "");
+
+                return `<li class="activity-item activity-${ev.type}">
+                    <span class="activity-icon" aria-hidden="true">${eventMeta.icon}</span>
+                    <div class="activity-content">
+                        <div class="activity-line">
+                            <strong class="activity-asset">${safeAsset}</strong>
+                            <span class="activity-action">${eventMeta.action}</span>
+                        </div>
+                        <div class="activity-description">
+                            <span>${safeDetail}</span>
+                            ${safeNote ? `<span class="activity-note">${safeNote}</span>` : ""}
+                        </div>
+                        <div class="activity-time">
+                            <time datetime="${isoDate}" title="${exactTime}">${relativeTime}</time>
+                            <span class="activity-time-absolute">${exactTime}</span>
+                        </div>
+                    </div>
+                </li>`;
+            }).join("");
         }
 
         const DASHBOARD_FILTER_CHIPS = [
@@ -1077,6 +1146,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 const originalAsset = { ...asset };
+                const updatedAt = new Date().toISOString();
+                const updatedHistory = Array.isArray(asset.history) ? [...asset.history] : [];
+                updatedHistory.push({
+                    date: updatedAt,
+                    operation: "Updated",
+                    label: "Info",
+                    note: "Asset details updated"
+                });
                 assets[assetIndex] = {
                     ...asset,
                     name: updatedName,
@@ -1088,7 +1165,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     created: asset.created || asset.lastServiceDate || new Date().toISOString(),
                     lastServiceDate,
                     nextServiceDate,
-                    history: Array.isArray(asset.history) ? asset.history : []
+                    history: updatedHistory
                 };
 
                 saveStoredAssets(assets);
