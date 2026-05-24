@@ -878,8 +878,14 @@ document.addEventListener("DOMContentLoaded", function () {
             editModal.querySelector("#edit-asset-form").addEventListener("submit", (e) => {
                 e.preventDefault();
                 const updatedName = editModal.querySelector("#edit-asset-name").value.trim();
+                const lastServiceDate = editModal.querySelector("#edit-last-service-date").value || "";
+                const nextServiceDate = editModal.querySelector("#edit-next-service-date").value || "";
                 if (!updatedName) {
                     alert("Asset name is required.");
+                    return;
+                }
+                if (lastServiceDate && nextServiceDate && new Date(nextServiceDate) < new Date(lastServiceDate)) {
+                    alert("Next service date must be on or after the last service date.");
                     return;
                 }
 
@@ -893,8 +899,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     year: editModal.querySelector("#edit-asset-year").value,
                     color: editModal.querySelector("#edit-asset-color").value.trim(),
                     created: asset.created || asset.lastServiceDate || new Date().toISOString(),
-                    lastServiceDate: editModal.querySelector("#edit-last-service-date").value || "",
-                    nextServiceDate: editModal.querySelector("#edit-next-service-date").value || "",
+                    lastServiceDate,
+                    nextServiceDate,
                     history: Array.isArray(asset.history) ? asset.history : []
                 };
 
