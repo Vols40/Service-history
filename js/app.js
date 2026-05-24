@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         //---Upcoming Reminders---
         function renderUpcomingReminders(daysAhead = 30) {
-            const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+            const assets = getStoredAssets();
             const today = new Date();
             const soon = new Date(today);
             soon.setDate(today.getDate() + daysAhead);
@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         function renderRecentActivities(limit = 15) {
-            const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+            const assets = getStoredAssets();
             const comments = JSON.parse(localStorage.getItem("assetComments") || "[]");
 
             let activityList = [];
@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         //---Quick Statistics---
         function renderQuickStatistics() {
-            const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+            const assets = getStoredAssets();
             const today = new Date();
             const thisMonth = today.getMonth();
             const thisYear = today.getFullYear();
@@ -254,7 +254,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const exportJsonBtn = document.getElementById("export-json");
         if (exportJsonBtn) {
             exportJsonBtn.addEventListener("click", () => {
-                const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+                const assets = getStoredAssets();
                 const blob = new Blob([JSON.stringify(assets, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
@@ -267,7 +267,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const exportCsvBtn = document.getElementById("export-csv");
         if (exportCsvBtn) {
             exportCsvBtn.addEventListener("click", () => {
-                const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+                const assets = getStoredAssets();
                 let csv = "Name,Type,Status,VIN,Year,Color,Added\n";
                 csv += assets.map(a => `"${a.name}","${a.type}","${a.status}","${a.vin || ""}","${a.year || ""}","${a.color || ""}","${new Date(a.created).toLocaleString()}"`).join("\n");
                 const blob = new Blob([csv], { type: "text/csv" });
@@ -282,7 +282,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const exportPdfBtn = document.getElementById("export-pdf");
         if (exportPdfBtn && window.jspdf) {
             exportPdfBtn.addEventListener("click", () => {
-                const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+                const assets = getStoredAssets();
                 const doc = new window.jspdf.jsPDF();
                 doc.text("Service History Report", 10, 10);
                 assets.forEach((a, i) => {
@@ -304,7 +304,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // ========== DASHBOARD FEATURES ==========
         function renderServiceSummary() {
-            const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+            const assets = getStoredAssets();
             let totalServices = 0, overdue = 0, upcoming = 0, completed = 0;
             const today = new Date();
             assets.forEach(asset => {
@@ -327,7 +327,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
         function renderAssetPerformance() {
-            const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+            const assets = getStoredAssets();
             let totalIntervals = 0, intervalCount = 0;
             let freqMap = {};
             assets.forEach(asset => {
@@ -362,7 +362,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
         function renderServiceHistoryLog() {
-            const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+            const assets = getStoredAssets();
             let log = [];
             assets.forEach(asset => {
                 (asset.history || []).forEach(ev => {
@@ -456,7 +456,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (window.Chart) {
                 chartDiv.innerHTML = `<canvas id="serviceTrendsCanvas" width="400" height="200"></canvas>`;
                 const ctx = document.getElementById('serviceTrendsCanvas').getContext('2d');
-                const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+                const assets = getStoredAssets();
                 const now = new Date();
                 const months = [];
                 const monthLabels = [];
@@ -509,7 +509,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
         function renderPredictiveMaintenance() {
-            const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+            const assets = getStoredAssets();
             const today = new Date();
             const soonAssets = assets
                 .map(a => {
@@ -550,13 +550,41 @@ document.addEventListener("DOMContentLoaded", function () {
         renderServiceTrendsChart();
         renderPredictiveMaintenance();
 
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        }
+
+        function normalizeAsset(raw) {
+            if (!raw || typeof raw !== "object") return null;
+            return {
+                id: raw.id || generateId(),
+                name: raw.name || "",
+                type: raw.type || "",
+                status: raw.status || "Active",
+                vin: raw.vin || "",
+                year: raw.year || "",
+                color: raw.color || "",
+                created: raw.created || raw.lastServiceDate || new Date().toISOString(),
+                lastServiceDate: raw.lastServiceDate || "",
+                nextServiceDate: raw.nextServiceDate || "",
+                odometer: raw.odometer || "",
+                technician: raw.technician || "",
+                location: raw.location || "",
+                serviceCost: raw.serviceCost || "",
+                attachedFile: raw.attachedFile !== undefined ? raw.attachedFile : null,
+                history: Array.isArray(raw.history) ? raw.history : []
+            };
+        }
+
         function getStoredAssets() {
-            const assets = JSON.parse(localStorage.getItem("assets") || "[]");
-            return Array.isArray(assets) ? assets : [];
+            const raw = JSON.parse(localStorage.getItem("assets") || "[]");
+            return Array.isArray(raw) ? raw.map(normalizeAsset).filter(Boolean) : [];
         }
 
         function saveStoredAssets(assets) {
-            localStorage.setItem("assets", JSON.stringify(assets));
+            localStorage.setItem("assets", JSON.stringify(
+                Array.isArray(assets) ? assets.map(normalizeAsset).filter(Boolean) : []
+            ));
         }
 
         function escapeHtml(value) {
@@ -587,6 +615,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function findAssetIndex(asset, assets = getStoredAssets()) {
             if (!asset) return -1;
+            if (asset.id) {
+                const idx = assets.findIndex(c => c && c.id === asset.id);
+                if (idx !== -1) return idx;
+            }
             const targetName = typeof asset.name === "string" ? asset.name : "";
             const targetCreated = asset.created || asset.lastServiceDate || "";
             const targetVin = asset.vin || "";
@@ -619,6 +651,9 @@ document.addEventListener("DOMContentLoaded", function () {
         function isAssetShownInDetailsModal(asset) {
             const modal = document.getElementById("asset-history-modal");
             if (!modal || !asset) return false;
+            if (asset.id && modal.dataset.assetId) {
+                return modal.dataset.assetId === asset.id;
+            }
             const modalName = modal.dataset.assetName || "";
             const modalCreated = modal.dataset.assetCreated || "";
             const modalVin = modal.dataset.assetVin || "";
@@ -709,7 +744,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         // Save asset with history array and new fields
                         const assets = getStoredAssets();
                         const created = new Date().toISOString();
-                        assets.push({
+                        assets.push(normalizeAsset({
                             name, type, status, vin, year, color, created,
                             history: [{
                                 date: created,
@@ -717,7 +752,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 label: "Info",
                                 note: "Asset created"
                             }]
-                        });
+                        }));
                         saveStoredAssets(assets);
                         refreshAssetDependentViews();
                         alert("Asset added successfully!");
@@ -1036,7 +1071,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     alert("Please enter a search term.");
                     return;
                 }
-                const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+                const assets = getStoredAssets();
                 const matched = assets.filter(
                     a => a && typeof a.name === "string" && (
                         a.name.toLowerCase().includes(query) ||
@@ -1079,6 +1114,7 @@ document.addEventListener("DOMContentLoaded", function () {
             modal.style.alignItems = "center";
             modal.style.justifyContent = "center";
             modal.style.zIndex = "2000";
+            modal.dataset.assetId = asset.id || "";
             modal.dataset.assetName = asset.name || "";
             modal.dataset.assetCreated = asset.created || asset.lastServiceDate || "";
             modal.dataset.assetVin = asset.vin || "";
@@ -1641,6 +1677,34 @@ document.addEventListener("DOMContentLoaded", function () {
         </form>
         <div class="success-message" id="success-message" style="display:none;">Asset and service info saved!</div>
         <script>
+          // Note: generateId and normalizeAsset are defined here as local copies because
+          // this script runs in a separate browser window (new tab) opened via window.open()
+          // and cannot access the parent page's scope. Any logic changes must be kept in sync
+          // with the identical functions in the main js/app.js file.
+          function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+          }
+          function normalizeAsset(raw) {
+            if (!raw || typeof raw !== 'object') return null;
+            return {
+              id: raw.id || generateId(),
+              name: raw.name || '',
+              type: raw.type || '',
+              status: raw.status || 'Active',
+              vin: raw.vin || '',
+              year: raw.year || '',
+              color: raw.color || '',
+              created: raw.created || raw.lastServiceDate || new Date().toISOString(),
+              lastServiceDate: raw.lastServiceDate || '',
+              nextServiceDate: raw.nextServiceDate || '',
+              odometer: raw.odometer || '',
+              technician: raw.technician || '',
+              location: raw.location || '',
+              serviceCost: raw.serviceCost || '',
+              attachedFile: raw.attachedFile !== undefined ? raw.attachedFile : null,
+              history: Array.isArray(raw.history) ? raw.history : []
+            };
+          }
           function renderAxleSideHtml(container, serviceId) {
             var serviceAxles = ['Axle 1', 'Axle 2', 'Axle 3', 'Axle 4', 'Axle 5'];
             var sides = ['Left', 'Right'];
@@ -1742,7 +1806,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }
       
             function saveService() {
-              var assets = JSON.parse(localStorage.getItem("assets") || "[]");
+              var rawAssets = JSON.parse(localStorage.getItem("assets") || "[]");
+              var assets = Array.isArray(rawAssets) ? rawAssets : [];
               var asset = assets.find(function(a) { return a.name === name; });
               var nowISO = new Date().toISOString();
       
@@ -1769,17 +1834,20 @@ document.addEventListener("DOMContentLoaded", function () {
               };
       
               if (asset) {
-                asset.lastServiceDate = lastServiceDate;
-                asset.nextServiceDate = nextServiceDate;
-                asset.odometer = odometer;
-                asset.technician = technician;
-                asset.location = location;
-                asset.serviceCost = serviceCost;
-                asset.attachedFile = attachedFile;
-                asset.history = asset.history || [];
-                asset.history.push(serviceEvent);
+                var updatedHistory = (asset.history || []).concat([serviceEvent]);
+                var updated = normalizeAsset(Object.assign({}, asset, {
+                  lastServiceDate: lastServiceDate,
+                  nextServiceDate: nextServiceDate,
+                  odometer: odometer,
+                  technician: technician,
+                  location: location,
+                  serviceCost: serviceCost,
+                  attachedFile: attachedFile,
+                  history: updatedHistory
+                }));
+                assets[assets.indexOf(asset)] = updated;
               } else {
-                asset = {
+                asset = normalizeAsset({
                   name: name,
                   created: nowISO,
                   lastServiceDate: lastServiceDate,
@@ -1790,10 +1858,10 @@ document.addEventListener("DOMContentLoaded", function () {
                   serviceCost: serviceCost,
                   attachedFile: attachedFile,
                   history: [serviceEvent]
-                };
+                });
                 assets.push(asset);
               }
-              localStorage.setItem("assets", JSON.stringify(assets));
+              localStorage.setItem("assets", JSON.stringify(assets.map(function(a) { return normalizeAsset(a) || a; })));
               document.getElementById('success-message').style.display = 'block';
               setTimeout(function(){ window.close(); }, 1300);
             }
