@@ -190,6 +190,8 @@ document.addEventListener("DOMContentLoaded", function () {
             outOfService: 20
         };
         const SERVICE_EVENT_OPERATIONS = new Set(["service", "maintenance", "repair", "parts change"]);
+        const SUPPORTED_SERVICE_CURRENCIES = ["USD", "EUR", "RON"];
+        const DEFAULT_SERVICE_CURRENCY = "USD";
         const ASSETS_MODAL_COLUMNS = ["Select", "Name", "Type", "Status", "Health", "Latest Cost", "VIN", "Year", "Color", "Added", "Actions"];
         let activeAssetFilter = "all";
         let activeAssetSearchQuery = "";
@@ -204,52 +206,157 @@ document.addEventListener("DOMContentLoaded", function () {
             return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
         }
 
-        function formatCurrency(value) {
+        function normalizeServiceCurrency(currency) {
+            const normalized = String(currency || "").trim().toUpperCase();
+            return SUPPORTED_SERVICE_CURRENCIES.includes(normalized) ? normalized : DEFAULT_SERVICE_CURRENCY;
+        }
+
+        function formatCurrency(value, currency = DEFAULT_SERVICE_CURRENCY) {
             const amount = Number(value) || 0;
-            return amount.toLocaleString(undefined, { style: "currency", currency: "USD" });
+            const normalizedCurrency = normalizeServiceCurrency(currency);
+            try {
+                return amount.toLocaleString(undefined, { style: "currency", currency: normalizedCurrency });
+            } catch (error) {
+                return `${amount.toFixed(2)} ${normalizedCurrency}`;
+            }
+        }
+
+        function initializeCurrencyTotals(initialValue = 0) {
+            return SUPPORTED_SERVICE_CURRENCIES.reduce((acc, currency) => {
+                acc[currency] = initialValue;
+                return acc;
+            }, {});
+        }
+
+        function getServiceCostEntry(event, asset = null) {
+            const amount = parseCostValue(event?.serviceCost);
+            if (amount <= 0) return null;
+            const currency = normalizeServiceCurrency(event?.serviceCurrency || asset?.serviceCurrency);
+            return { amount, currency };
+        }
+
+        function getAssetFallbackCostEntry(asset) {
+            const amount = parseCostValue(asset?.serviceCost);
+            if (amount <= 0) return null;
+            const currency = normalizeServiceCurrency(asset?.serviceCurrency);
+            return { amount, currency };
+        }
+
+        function formatCurrencyBreakdownText(valuesByCurrency = {}) {
+            const parts = SUPPORTED_SERVICE_CURRENCIES
+                .filter(currency => Number(valuesByCurrency[currency]) > 0)
+                .map(currency => `${currency}: ${formatCurrency(valuesByCurrency[currency], currency)}`);
+            return parts.length ? parts.join(" | ") : "—";
+        }
+
+        function formatHighCostAssetBreakdownText(highestCostAssetByCurrency = {}) {
+            const parts = SUPPORTED_SERVICE_CURRENCIES
+                .filter(currency => Number(highestCostAssetByCurrency[currency]?.value) > 0)
+                .map(currency => `${currency}: ${highestCostAssetByCurrency[currency].name} (${formatCurrency(highestCostAssetByCurrency[currency].value, currency)})`);
+            return parts.length ? parts.join(" | ") : "—";
+        }
+
+        function renderCurrencyBreakdownHtml(valuesByCurrency = {}) {
+            const parts = SUPPORTED_SERVICE_CURRENCIES
+                .filter(currency => Number(valuesByCurrency[currency]) > 0)
+                .map(currency => `<span>${currency}: ${escapeHtml(formatCurrency(valuesByCurrency[currency], currency))}</span>`);
+            return parts.length ? parts.join("<br>") : "—";
+        }
+
+        function renderHighCostAssetBreakdownHtml(highestCostAssetByCurrency = {}) {
+            const parts = SUPPORTED_SERVICE_CURRENCIES
+                .filter(currency => Number(highestCostAssetByCurrency[currency]?.value) > 0)
+                .map(currency => `<span>${currency}: ${escapeHtml(highestCostAssetByCurrency[currency].name)} (${escapeHtml(formatCurrency(highestCostAssetByCurrency[currency].value, currency))})</span>`);
+            return parts.length ? parts.join("<br>") : "—";
+        }
+
+        function getServiceCurrencyOptionsHtml(selectedCurrency = DEFAULT_SERVICE_CURRENCY) {
+            const normalizedSelection = normalizeServiceCurrency(selectedCurrency);
+            return SUPPORTED_SERVICE_CURRENCIES
+                .map(currency => `<option value="${currency}"${currency === normalizedSelection ? " selected" : ""}>${currency}</option>`)
+                .join("");
         }
 
         function getLatestServiceCost(asset) {
             const history = Array.isArray(asset?.history) ? [...asset.history] : [];
             history.sort((a, b) => new Date(b.date) - new Date(a.date));
-            const fromHistory = history.find(ev => parseCostValue(ev.serviceCost) > 0);
-            return fromHistory ? parseCostValue(fromHistory.serviceCost) : parseCostValue(asset?.serviceCost);
+            const fromHistory = history.find(ev => getServiceCostEntry(ev, asset));
+            if (fromHistory) return getServiceCostEntry(fromHistory, asset);
+            return getAssetFallbackCostEntry(asset);
         }
 
         function getServiceCostInsightsData(assets = getStoredAssets()) {
             const now = Date.now();
             const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-            let totalCost = 0;
-            let recentCost = 0;
-            let serviceEventsWithCost = 0;
-            const assetSpend = {};
+            const totalCostByCurrency = initializeCurrencyTotals();
+            const recentCostByCurrency = initializeCurrencyTotals();
+            const serviceEventsWithCostByCurrency = initializeCurrencyTotals();
+            const assetSpendByCurrency = SUPPORTED_SERVICE_CURRENCIES.reduce((acc, currency) => {
+                acc[currency] = {};
+                return acc;
+            }, {});
 
             assets.forEach(asset => {
-                let assetTotal = 0;
+                const assetTotalsByCurrency = initializeCurrencyTotals();
                 let hasHistoryCost = false;
                 (asset.history || []).forEach(ev => {
                     if (!isServiceEvent(ev)) return;
-                    const eventCost = parseCostValue(ev.serviceCost);
-                    if (eventCost <= 0) return;
+                    const eventCostEntry = getServiceCostEntry(ev, asset);
+                    if (!eventCostEntry) return;
                     hasHistoryCost = true;
-                    serviceEventsWithCost++;
-                    totalCost += eventCost;
-                    assetTotal += eventCost;
+                    const { amount, currency } = eventCostEntry;
+                    serviceEventsWithCostByCurrency[currency]++;
+                    totalCostByCurrency[currency] += amount;
+                    assetTotalsByCurrency[currency] += amount;
                     const eventDate = new Date(ev.date);
                     if (!isNaN(eventDate.getTime()) && (now - eventDate.getTime()) <= thirtyDaysMs) {
-                        recentCost += eventCost;
+                        recentCostByCurrency[currency] += amount;
                     }
                 });
                 if (!hasHistoryCost) {
-                    const fallbackCost = parseCostValue(asset.serviceCost);
-                    if (fallbackCost > 0) {
-                        totalCost += fallbackCost;
-                        assetTotal += fallbackCost;
+                    const fallbackCostEntry = getAssetFallbackCostEntry(asset);
+                    if (fallbackCostEntry) {
+                        const { amount, currency } = fallbackCostEntry;
+                        totalCostByCurrency[currency] += amount;
+                        assetTotalsByCurrency[currency] += amount;
                     }
                 }
-                if (assetTotal > 0) {
-                    assetSpend[asset.name || "Unnamed Asset"] = assetTotal;
-                }
+                SUPPORTED_SERVICE_CURRENCIES.forEach(currency => {
+                    if (assetTotalsByCurrency[currency] > 0) {
+                        assetSpendByCurrency[currency][asset.name || "Unnamed Asset"] =
+                            (assetSpendByCurrency[currency][asset.name || "Unnamed Asset"] || 0) + assetTotalsByCurrency[currency];
+                    }
+                });
+            });
+
+            const highestCostAssetByCurrency = SUPPORTED_SERVICE_CURRENCIES.reduce((acc, currency) => {
+                let highestName = "—";
+                let highestValue = 0;
+                Object.entries(assetSpendByCurrency[currency]).forEach(([assetName, spend]) => {
+                    if (spend > highestValue) {
+                        highestValue = spend;
+                        highestName = assetName;
+                    }
+                });
+                acc[currency] = { name: highestName, value: highestValue };
+                return acc;
+            }, {});
+
+            const avgCostPerServiceByCurrency = SUPPORTED_SERVICE_CURRENCIES.reduce((acc, currency) => {
+                const eventCount = serviceEventsWithCostByCurrency[currency];
+                acc[currency] = eventCount ? totalCostByCurrency[currency] / eventCount : 0;
+                return acc;
+            }, {});
+
+            const totalCost = SUPPORTED_SERVICE_CURRENCIES.reduce((sum, currency) => sum + totalCostByCurrency[currency], 0);
+            const recentCost = SUPPORTED_SERVICE_CURRENCIES.reduce((sum, currency) => sum + recentCostByCurrency[currency], 0);
+            const serviceEventsWithCost = SUPPORTED_SERVICE_CURRENCIES.reduce((sum, currency) => sum + serviceEventsWithCostByCurrency[currency], 0);
+            const avgCostPerService = serviceEventsWithCost ? totalCost / serviceEventsWithCost : 0;
+            const assetSpend = {};
+            SUPPORTED_SERVICE_CURRENCIES.forEach(currency => {
+                Object.entries(assetSpendByCurrency[currency]).forEach(([assetName, spend]) => {
+                    assetSpend[assetName] = (assetSpend[assetName] || 0) + spend;
+                });
             });
 
             let highestCostAsset = "—";
@@ -261,29 +368,40 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
 
-            const avgCostPerService = serviceEventsWithCost ? totalCost / serviceEventsWithCost : 0;
-            return { totalCost, recentCost, highestCostAsset, highestCostValue, avgCostPerService, serviceEventsWithCost, assetSpend };
+            return {
+                totalCost,
+                recentCost,
+                highestCostAsset,
+                highestCostValue,
+                avgCostPerService,
+                serviceEventsWithCost,
+                assetSpend,
+                totalCostByCurrency,
+                recentCostByCurrency,
+                highestCostAssetByCurrency,
+                avgCostPerServiceByCurrency,
+                serviceEventsWithCostByCurrency,
+                assetSpendByCurrency
+            };
         }
 
         function renderServiceCostInsights(assets = getStoredAssets(), insights = getServiceCostInsightsData(assets)) {
             const container = document.getElementById("service-cost-insights");
             if (!container) return;
-            const highCostAssetText = insights.highestCostValue > 0
-                ? `${escapeHtml(insights.highestCostAsset)} (${formatCurrency(insights.highestCostValue)})`
-                : "—";
+            const highCostAssetText = renderHighCostAssetBreakdownHtml(insights.highestCostAssetByCurrency);
 
             container.innerHTML = `
                 <div class="service-cost-card">
                     <span class="service-cost-label">Total Service Spend</span>
-                    <strong class="service-cost-value">${formatCurrency(insights.totalCost)}</strong>
+                    <strong class="service-cost-value">${renderCurrencyBreakdownHtml(insights.totalCostByCurrency)}</strong>
                 </div>
                 <div class="service-cost-card">
                     <span class="service-cost-label">Spend (Last 30 Days)</span>
-                    <strong class="service-cost-value">${formatCurrency(insights.recentCost)}</strong>
+                    <strong class="service-cost-value">${renderCurrencyBreakdownHtml(insights.recentCostByCurrency)}</strong>
                 </div>
                 <div class="service-cost-card">
                     <span class="service-cost-label">Average Cost per Service</span>
-                    <strong class="service-cost-value">${formatCurrency(insights.avgCostPerService)}</strong>
+                    <strong class="service-cost-value">${renderCurrencyBreakdownHtml(insights.avgCostPerServiceByCurrency)}</strong>
                 </div>
                 <div class="service-cost-card">
                     <span class="service-cost-label">High-Cost Asset</span>
@@ -446,7 +564,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 { label: "Overdue Services", value: overdueServices, action: "open-overdue-assets" },
                 { label: "Upcoming Services", value: upcomingServices, action: "open-due-soon-assets" },
                 { label: "Completed Services", value: completedServices, action: "open-service-summary" },
-                { label: "Total Service Spend", value: formatCurrency(costInsights.totalCost), detail: "Cost insights", action: "open-analytics" },
+                { label: "Total Service Spend", value: formatCurrencyBreakdownText(costInsights.totalCostByCurrency), detail: "Cost insights", action: "open-analytics" },
                 { label: "Most Serviced Asset", value: mostServicedAsset || "-", detail: mostServicedCount ? `${mostServicedCount} service events` : "No service events yet", action: "open-most-serviced-asset", assetName: mostServicedAsset || "" }
             ];
 
@@ -672,8 +790,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 ss.querySelector("p:nth-of-type(3)").textContent = `Upcoming Services: ${upcoming}`;
                 ss.querySelector("p:nth-of-type(4)").textContent = `Completed Services: ${completed}`;
                 const costInsights = getServiceCostInsightsData(assets);
-                ss.querySelector("p:nth-of-type(5)").textContent = `Total Service Spend: ${formatCurrency(costInsights.totalCost)}`;
-                ss.querySelector("p:nth-of-type(6)").textContent = `Highest Service Spend Asset: ${costInsights.highestCostValue > 0 ? `${costInsights.highestCostAsset} (${formatCurrency(costInsights.highestCostValue)})` : "—"}`;
+                ss.querySelector("p:nth-of-type(5)").textContent = `Total Service Spend: ${formatCurrencyBreakdownText(costInsights.totalCostByCurrency)}`;
+                ss.querySelector("p:nth-of-type(6)").textContent = `Highest Service Spend Asset: ${formatHighCostAssetBreakdownText(costInsights.highestCostAssetByCurrency)}`;
             }
         }
         function renderAssetPerformance() {
@@ -718,10 +836,12 @@ document.addEventListener("DOMContentLoaded", function () {
             assets.forEach(asset => {
                 (asset.history || []).forEach(ev => {
                     if (isServiceEvent(ev)) {
+                        const serviceCostEntry = getServiceCostEntry(ev, asset);
                         log.push({
                             date: new Date(ev.date),
                             asset: asset.name,
-                            note: ev.note || ""
+                            note: ev.note || "",
+                            costText: serviceCostEntry ? formatCurrency(serviceCostEntry.amount, serviceCostEntry.currency) : ""
                         });
                     }
                 });
@@ -736,7 +856,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         : (ev.note && ev.note.toLowerCase().includes("completed"))
                             ? "Completed service"
                             : "Service event";
-                    return `<li>${dateStr} - ${status} for "${ev.asset}"</li>`;
+                    return `<li>${dateStr} - ${status} for "${ev.asset}"${ev.costText ? ` (${escapeHtml(ev.costText)})` : ""}</li>`;
                 }).join("") || '<li>No service events found.</li>';
         }
         window.printSection = function (id) {
@@ -848,18 +968,32 @@ document.addEventListener("DOMContentLoaded", function () {
                 return count;
             });
 
-            const monthlyCosts = months.map(m => {
-                let total = 0;
+            const monthlyCostsByCurrency = SUPPORTED_SERVICE_CURRENCIES.reduce((acc, currency) => {
+                acc[currency] = months.map(() => 0);
+                return acc;
+            }, {});
+            months.forEach((m, monthIndex) => {
                 assets.forEach(asset => {
                     (asset.history || []).forEach(ev => {
                         const evDate = new Date(ev.date);
                         if (isServiceEvent(ev) && evDate.getFullYear() === m.year && evDate.getMonth() === m.month) {
-                            total += parseCostValue(ev.serviceCost);
+                            const serviceCostEntry = getServiceCostEntry(ev, asset);
+                            if (serviceCostEntry) {
+                                monthlyCostsByCurrency[serviceCostEntry.currency][monthIndex] += serviceCostEntry.amount;
+                            }
                         }
                     });
                 });
-                return Number(total.toFixed(2));
+                SUPPORTED_SERVICE_CURRENCIES.forEach(currency => {
+                    monthlyCostsByCurrency[currency][monthIndex] = Number(monthlyCostsByCurrency[currency][monthIndex].toFixed(2));
+                });
             });
+            const hasMonthlyCosts = SUPPORTED_SERVICE_CURRENCIES.some(currency => monthlyCostsByCurrency[currency].some(cost => cost > 0));
+            const costDatasetColors = {
+                USD: { bg: "rgba(72, 128, 196, 0.6)", border: "rgba(72, 128, 196, 1)" },
+                EUR: { bg: "rgba(90, 170, 112, 0.6)", border: "rgba(90, 170, 112, 1)" },
+                RON: { bg: "rgba(208, 142, 74, 0.6)", border: "rgba(208, 142, 74, 1)" }
+            };
 
             const statusCounts = { Active: 0, Inactive: 0, "Out of Service": 0, Other: 0 };
             const dueCounts = { Overdue: 0, "Due Soon": 0, "On Track": 0 };
@@ -937,22 +1071,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
             renderChartWithFallback({
                 containerId: "service-cost-chart",
-                chartConfig: monthlyCosts.some(cost => cost > 0) ? {
+                chartConfig: hasMonthlyCosts ? {
                     type: "bar",
                     data: {
                         labels: monthLabels,
-                        datasets: [{
-                            label: "Cost",
-                            data: monthlyCosts,
-                            backgroundColor: "rgba(72, 128, 196, 0.6)",
-                            borderColor: "rgba(72, 128, 196, 1)",
-                            borderWidth: 1
-                        }]
+                        datasets: SUPPORTED_SERVICE_CURRENCIES
+                            .filter(currency => monthlyCostsByCurrency[currency].some(cost => cost > 0))
+                            .map(currency => ({
+                                label: currency,
+                                data: monthlyCostsByCurrency[currency],
+                                backgroundColor: costDatasetColors[currency].bg,
+                                borderColor: costDatasetColors[currency].border,
+                                borderWidth: 1
+                            }))
                     },
                     options: { responsive: true, scales: { y: { beginAtZero: true } } }
                 } : null,
-                fallbackHtml: monthlyCosts.some(cost => cost > 0)
-                    ? `<ul class="chart-fallback-list">${monthLabels.map((label, idx) => `<li>${escapeHtml(label)}: <strong>${formatCurrency(monthlyCosts[idx])}</strong></li>`).join("")}</ul>`
+                fallbackHtml: hasMonthlyCosts
+                    ? `<ul class="chart-fallback-list">${monthLabels.map((label, idx) => {
+                        const monthCosts = SUPPORTED_SERVICE_CURRENCIES
+                            .filter(currency => monthlyCostsByCurrency[currency][idx] > 0)
+                            .map(currency => `${currency}: <strong>${escapeHtml(formatCurrency(monthlyCostsByCurrency[currency][idx], currency))}</strong>`)
+                            .join(" | ");
+                        return `<li>${escapeHtml(label)}: ${monthCosts || "—"}</li>`;
+                    }).join("")}</ul>`
                     : `<p class="empty-state">Service cost trend data appears once service costs are recorded.</p>`
             });
 
@@ -1020,6 +1162,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 technician: raw.technician || "",
                 location: raw.location || "",
                 serviceCost: raw.serviceCost || "",
+                serviceCurrency: raw.serviceCurrency || "",
                 attachedFile: raw.attachedFile !== undefined ? raw.attachedFile : null,
                 history: Array.isArray(raw.history) ? raw.history : []
             };
@@ -1248,14 +1391,19 @@ document.addEventListener("DOMContentLoaded", function () {
             const tableHeaderHtml = ASSETS_MODAL_COLUMNS.map(column => `<th>${column}</th>`).join("");
 
             const tableRows = filteredAssets.length
-                ? filteredAssets.map(({ asset, index }) => `
+                ? filteredAssets.map(({ asset, index }) => {
+                    const latestServiceCost = getLatestServiceCost(asset);
+                    const latestServiceCostText = latestServiceCost
+                        ? formatCurrency(latestServiceCost.amount, latestServiceCost.currency)
+                        : "—";
+                    return `
                         <tr>
                             <td><input type="checkbox" data-select-asset="${escapeHtml(asset.id)}"${selectedAssetIds.has(asset.id) ? " checked" : ""}></td>
                             <td>${highlightSearchMatch(asset.name || "—", activeAssetSearchQuery)}</td>
                             <td>${highlightSearchMatch(asset.type || "—", activeAssetSearchQuery)}</td>
                             <td>${renderStatusBadge(asset.status || "—")}</td>
                             <td>${renderHealthIndicator(asset)}</td>
-                            <td>${highlightSearchMatch(getLatestServiceCost(asset) > 0 ? formatCurrency(getLatestServiceCost(asset)) : "—", activeAssetSearchQuery)}</td>
+                            <td>${highlightSearchMatch(latestServiceCostText, activeAssetSearchQuery)}</td>
                             <td>${highlightSearchMatch(asset.vin || "—", activeAssetSearchQuery)}</td>
                             <td>${highlightSearchMatch(asset.year || "—", activeAssetSearchQuery)}</td>
                             <td>${highlightSearchMatch(asset.color || "—", activeAssetSearchQuery)}</td>
@@ -1264,7 +1412,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <button type="button" data-edit-asset="${index}">Edit</button>
                                 <button type="button" data-delete-asset="${index}" style="margin-left:0.5em;">Delete</button>
                             </td>
-                        </tr>`).join("")
+                        </tr>`;
+                }).join("")
                 : `<tr><td colspan="${ASSETS_MODAL_COLUMNS.length}" class="empty-state-cell">No assets match this filter.</td></tr>`;
 
             const modalFilterChips = DASHBOARD_FILTER_CHIPS.map(chip => `
@@ -1746,6 +1895,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     previousTimelineGroup = timelineGroup;
                     const visual = getHistoryEventVisual(event.operation || event.type);
                     const operationText = String(event.operation || event.type || "Event").trim();
+                    const serviceCostEntry = getServiceCostEntry(event, asset);
                     return `
                         ${showGroupHeader ? `<li class="history-group-label">${escapeHtml(timelineGroup)}</li>` : ""}
                         <li class="history-timeline-item">
@@ -1754,6 +1904,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <div class="history-timeline-main">
                                     <span class="history-operation-badge ${visual.badgeClass}">${escapeHtml(operationText || "Event")}</span>
                                     ${event.label ? `<span class="history-label-pill">${escapeHtml(event.label)}</span>` : ""}
+                                    ${serviceCostEntry ? `<span class="history-cost-pill">${escapeHtml(formatCurrency(serviceCostEntry.amount, serviceCostEntry.currency))}</span>` : ""}
                                 </div>
                                 <div class="history-timeline-note">${escapeHtml(event.note || "No additional note provided.")}</div>
                                 <div class="history-timeline-meta">
@@ -1774,6 +1925,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 : statusInfo.isDueSoon
                     ? `<span class="service-date-tag sdt-due-soon">Due Soon</span>`
                     : "";
+            const latestServiceCost = getLatestServiceCost(asset);
 
             // Modal innerHTML
             modal.innerHTML = `
@@ -1835,7 +1987,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
                     <div class="asset-detail-field">
                         <span class="asset-detail-field-label">Latest Service Cost</span>
-                        <span class="asset-detail-field-value">${getLatestServiceCost(asset) > 0 ? escapeHtml(formatCurrency(getLatestServiceCost(asset))) : "—"}</span>
+                        <span class="asset-detail-field-value">${latestServiceCost ? escapeHtml(formatCurrency(latestServiceCost.amount, latestServiceCost.currency)) : "—"}</span>
                     </div>
                     <div class="asset-detail-field">
                         <span class="asset-detail-field-label">Added</span>
@@ -1881,6 +2033,18 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div class="form-row">
                         <label>Note:
                             <input type="text" id="history-note" required style="width:100%;">
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label>Service Cost Amount:
+                            <input type="number" id="history-service-cost" min="0" step="0.01" placeholder="e.g. 100.00" style="width:100%;">
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label>Service Cost Currency:
+                            <select id="history-service-currency" style="width:100%;">
+                                ${getServiceCurrencyOptionsHtml()}
+                            </select>
                         </label>
                     </div>
                     <div class="asset-detail-form-actions">
@@ -1929,12 +2093,17 @@ document.addEventListener("DOMContentLoaded", function () {
                             { header: "Date", dataKey: "date" },
                             { header: "Operation", dataKey: "operation" },
                             { header: "Label", dataKey: "label" },
+                            { header: "Cost", dataKey: "cost" },
                             { header: "Note", dataKey: "note" }
                         ],
                         body: (asset.history || []).map(ev => ({
                             date: new Date(ev.date).toLocaleDateString(),
                             operation: ev.operation || "",
                             label: ev.label || "",
+                            cost: (() => {
+                                const serviceCostEntry = getServiceCostEntry(ev, asset);
+                                return serviceCostEntry ? formatCurrency(serviceCostEntry.amount, serviceCostEntry.currency) : "";
+                            })(),
                             note: ev.note || ""
                         })),
                         startY: y,
@@ -1943,10 +2112,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         theme: "grid",
                         tableWidth: "auto",
                         columnStyles: {
-                            note: { cellWidth: 95, overflow: 'linebreak' },
+                            note: { cellWidth: 75, overflow: 'linebreak' },
                             date: { cellWidth: 28 },
-                            operation: { cellWidth: 30 },
-                            label: { cellWidth: 30 }
+                            operation: { cellWidth: 28 },
+                            label: { cellWidth: 24 },
+                            cost: { cellWidth: 24 }
                         }
                     });
                     doc.save(`${asset.name.replace(/\s+/g, "_")}_Service_History.pdf`);
@@ -1963,12 +2133,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 const operation = modal.querySelector("#history-operation").value;
                 const label = modal.querySelector("#history-label").value;
                 const note = modal.querySelector("#history-note").value.trim();
+                const serviceCost = parseCostValue(modal.querySelector("#history-service-cost").value);
+                const serviceCurrency = normalizeServiceCurrency(modal.querySelector("#history-service-currency").value);
                 const assets = getStoredAssets();
                 const idx = findAssetIndex(asset, assets);
                 if (idx !== -1) {
                     assets[idx].history = assets[idx].history || [];
                     assets[idx].history.push({
-                        date: new Date().toISOString(), operation, label, note
+                        date: new Date().toISOString(),
+                        operation,
+                        label,
+                        note,
+                        serviceCost: serviceCost > 0 ? serviceCost : "",
+                        serviceCurrency: serviceCost > 0 ? serviceCurrency : ""
                     });
                     saveStoredAssets(assets);
                     refreshAssetDependentViews();
@@ -2020,6 +2197,18 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <input type="text" id="edit-note" value="${escapeHtml(h.note || "")}" required>
                             </label>
                         </div>
+                        <div style="margin-bottom:0.5em;">
+                            <label>Service Cost Amount:
+                                <input type="number" id="edit-service-cost" value="${parseCostValue(h.serviceCost) > 0 ? parseCostValue(h.serviceCost) : ""}" min="0" step="0.01">
+                            </label>
+                        </div>
+                        <div style="margin-bottom:0.5em;">
+                            <label>Service Cost Currency:
+                                <select id="edit-service-currency">
+                                    ${getServiceCurrencyOptionsHtml(h.serviceCurrency || asset.serviceCurrency)}
+                                </select>
+                            </label>
+                        </div>
                         <button type="submit">Save</button>
                     </form>
                 </div>
@@ -2032,12 +2221,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     const operation = editModal.querySelector("#edit-operation").value;
                     const label = editModal.querySelector("#edit-label").value;
                     const note = editModal.querySelector("#edit-note").value;
+                    const serviceCost = parseCostValue(editModal.querySelector("#edit-service-cost").value);
+                    const serviceCurrency = normalizeServiceCurrency(editModal.querySelector("#edit-service-currency").value);
                     const assets = getStoredAssets();
                     const idx = findAssetIndex(asset, assets);
                     if (idx !== -1 && assets[idx].history && assets[idx].history[hidx]) {
                         assets[idx].history[hidx].operation = operation;
                         assets[idx].history[hidx].label = label;
                         assets[idx].history[hidx].note = note;
+                        assets[idx].history[hidx].serviceCost = serviceCost > 0 ? serviceCost : "";
+                        assets[idx].history[hidx].serviceCurrency = serviceCost > 0 ? serviceCurrency : "";
                         saveStoredAssets(assets);
                         refreshAssetDependentViews();
                         showAssetDetailsAndHistory(assets[idx]);
@@ -2283,6 +2476,12 @@ document.addEventListener("DOMContentLoaded", function () {
           <div class="form-section inline-field">
             <label for="service-cost">Service Cost:</label>
             <input type="number" id="service-cost" min="0" step="0.01" placeholder="e.g. 100.00">
+            <label for="service-currency">Currency:</label>
+            <select id="service-currency">
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="RON">RON</option>
+            </select>
           </div>
           <div class="form-section">
             <label for="service-file">Attach File (photo or PDF):</label>
@@ -2396,6 +2595,7 @@ document.addEventListener("DOMContentLoaded", function () {
               technician: raw.technician || '',
               location: raw.location || '',
               serviceCost: raw.serviceCost || '',
+              serviceCurrency: raw.serviceCurrency || '',
               attachedFile: raw.attachedFile !== undefined ? raw.attachedFile : null,
               history: Array.isArray(raw.history) ? raw.history : []
             };
@@ -2453,6 +2653,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var technician = document.getElementById('technician').value.trim();
             var location = document.getElementById('location').value.trim();
             var serviceCost = document.getElementById('service-cost').value;
+            var serviceCurrency = (document.getElementById('service-currency').value || 'USD').toUpperCase();
             var notes = document.getElementById('service-notes').value.trim();
       
             var services = Array.prototype.slice.call(document.querySelectorAll('input[name="services"]:checked')).map(function(cb) { return cb.value; });
@@ -2540,6 +2741,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 technician,
                 location,
                 serviceCost,
+                serviceCurrency,
                 attachedFile
               };
       
@@ -2552,6 +2754,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   technician: technician,
                   location: location,
                   serviceCost: serviceCost,
+                  serviceCurrency: serviceCurrency,
                   attachedFile: attachedFile,
                   history: updatedHistory
                 }));
@@ -2566,6 +2769,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   technician: technician,
                   location: location,
                   serviceCost: serviceCost,
+                  serviceCurrency: serviceCurrency,
                   attachedFile: attachedFile,
                   history: [serviceEvent]
                 });
