@@ -51,6 +51,8 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
+        const ACTIVITY_DETAIL_SEPARATOR = " • ";
+
         function getRelativeTimeLabel(dateValue) {
             const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
             if (isNaN(date.getTime())) return "Unknown time";
@@ -77,9 +79,8 @@ document.addEventListener("DOMContentLoaded", function () {
             if (op === "created" || noteLower.includes("asset created")) {
                 return "asset-created";
             }
-            if (["service", "maintenance", "repair", "parts change"].includes(op)) {
-                return op === "maintenance" ? "maintenance-recorded" : "service-logged";
-            }
+            if (op === "maintenance") return "maintenance-recorded";
+            if (op === "service" || op === "repair" || op === "parts change") return "service-logged";
             if (op === "updated" || op === "edit" || op === "edited" || noteLower.includes("updated")) {
                 return "asset-updated";
             }
@@ -110,7 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         type: mapActivityType(ev.operation || ev.type, ev.note),
                         asset: asset.name,
                         date: new Date(ev.date),
-                        detail: ev.operation ? `${ev.operation}${ev.label ? ` • ${ev.label}` : ""}` : "Service Event",
+                        detail: ev.operation ? `${ev.operation}${ev.label ? `${ACTIVITY_DETAIL_SEPARATOR}${ev.label}` : ""}` : "Service Event",
                         note: ev.note || ""
                     });
                 });
