@@ -11,11 +11,93 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
 
-        //---Upcoming Reminders---
+        //---App Preferences & Upcoming Reminders---
+        const APP_PREFS_KEY = "serviceAppPreferences";
+        const DEFAULT_APP_PREFERENCES = {
+            defaultServiceCurrency: "USD",
+            reminderSnoozeDays: 3,
+            reminderDueSoonDays: 7,
+            reminderLookAheadDays: 30,
+            themeMode: "system",
+            language: "en"
+        };
         const REMINDER_PREFS_KEY = "serviceReminderPreferences";
-        const REMINDER_SNOOZE_DAYS = 3;
         const REMINDER_MODAL_FOCUS_DELAY_MS = 100;
         const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
+        const APP_SUPPORTED_LANGUAGES = ["en", "ro"];
+        const APP_SUPPORTED_CURRENCIES = ["USD", "EUR", "RON"];
+
+        function clampPreferenceNumber(value, fallback, min, max) {
+            const parsed = Number.parseInt(value, 10);
+            if (!Number.isFinite(parsed)) return fallback;
+            return Math.min(max, Math.max(min, parsed));
+        }
+
+        function sanitizeAppPreferences(rawPreferences = {}) {
+            const source = rawPreferences && typeof rawPreferences === "object" ? rawPreferences : {};
+            const dueSoonDays = clampPreferenceNumber(
+                source.reminderDueSoonDays,
+                DEFAULT_APP_PREFERENCES.reminderDueSoonDays,
+                1,
+                30
+            );
+            const lookAheadDays = Math.max(
+                dueSoonDays,
+                clampPreferenceNumber(
+                    source.reminderLookAheadDays,
+                    DEFAULT_APP_PREFERENCES.reminderLookAheadDays,
+                    1,
+                    180
+                )
+            );
+            const currencyCandidate = String(source.defaultServiceCurrency || "").trim().toUpperCase();
+            const languageCandidate = String(source.language || "").trim().toLowerCase();
+            const themeCandidate = String(source.themeMode || "").trim().toLowerCase();
+
+            return {
+                defaultServiceCurrency: APP_SUPPORTED_CURRENCIES.includes(currencyCandidate)
+                    ? currencyCandidate
+                    : DEFAULT_APP_PREFERENCES.defaultServiceCurrency,
+                reminderSnoozeDays: clampPreferenceNumber(
+                    source.reminderSnoozeDays,
+                    DEFAULT_APP_PREFERENCES.reminderSnoozeDays,
+                    1,
+                    30
+                ),
+                reminderDueSoonDays: dueSoonDays,
+                reminderLookAheadDays: lookAheadDays,
+                themeMode: ["light", "dark", "system"].includes(themeCandidate)
+                    ? themeCandidate
+                    : DEFAULT_APP_PREFERENCES.themeMode,
+                language: APP_SUPPORTED_LANGUAGES.includes(languageCandidate)
+                    ? languageCandidate
+                    : DEFAULT_APP_PREFERENCES.language
+            };
+        }
+
+        function loadAppPreferences() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(APP_PREFS_KEY) || "{}");
+                return sanitizeAppPreferences(parsed);
+            } catch (error) {
+                return { ...DEFAULT_APP_PREFERENCES };
+            }
+        }
+
+        let appPreferences = loadAppPreferences();
+
+        function getAppPreferences() {
+            return { ...appPreferences };
+        }
+
+        function updateAppPreferences(nextPreferences = {}) {
+            appPreferences = sanitizeAppPreferences({
+                ...appPreferences,
+                ...(nextPreferences && typeof nextPreferences === "object" ? nextPreferences : {})
+            });
+            localStorage.setItem(APP_PREFS_KEY, JSON.stringify(appPreferences));
+            return getAppPreferences();
+        }
 
         function getReminderPreferences() {
             try {
@@ -56,6 +138,7 @@ document.addEventListener("DOMContentLoaded", function () {
         function renderReminderGroupList(listId, reminders, emptyState) {
             const list = document.getElementById(listId);
             if (!list) return;
+            const { reminderSnoozeDays } = getAppPreferences();
             if (!reminders.length) {
                 list.innerHTML = `<li class="empty-state">${emptyState}</li>`;
                 return;
@@ -78,7 +161,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         <div class="reminder-actions">
                             <button type="button" data-reminder-action="open-asset" data-reminder-asset-id="${assetId}">Open Asset</button>
                             <button type="button" data-reminder-action="record-service" data-reminder-asset-id="${assetId}">Record Service</button>
-                            <button type="button" data-reminder-action="snooze" data-reminder-asset-id="${assetId}">Snooze ${REMINDER_SNOOZE_DAYS}d</button>
+                            <button type="button" data-reminder-action="snooze" data-reminder-asset-id="${assetId}">Snooze ${reminderSnoozeDays}d</button>
                             <button type="button" data-reminder-action="dismiss" data-reminder-asset-id="${assetId}">Dismiss</button>
                         </div>
                     </li>
@@ -111,14 +194,15 @@ document.addEventListener("DOMContentLoaded", function () {
             return `Due in ${diffDays} days`;
         }
 
-        function renderUpcomingReminders(daysAhead = 30) {
+        function renderUpcomingReminders() {
             const assets = getStoredAssets();
+            const { reminderDueSoonDays, reminderLookAheadDays } = getAppPreferences();
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const dueSoonLimit = new Date(today);
-            dueSoonLimit.setDate(today.getDate() + 7);
-            const monthLimit = new Date(today);
-            monthLimit.setDate(today.getDate() + daysAhead);
+            dueSoonLimit.setDate(today.getDate() + reminderDueSoonDays);
+            const lookAheadLimit = new Date(today);
+            lookAheadLimit.setDate(today.getDate() + reminderLookAheadDays);
 
             const now = new Date();
             const reminderGroups = { overdue: [], dueSoon: [], upcomingLater: [] };
@@ -129,6 +213,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const nextService = new Date(asset.nextServiceDate);
                 if (isNaN(nextService.getTime())) return;
                 nextService.setHours(0, 0, 0, 0);
+                if (nextService >= today && nextService > lookAheadLimit) return;
                 let category = "upcoming-later";
                 let urgencyText = "Upcoming";
                 if (nextService < today) {
@@ -146,7 +231,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     relativeLabel: getReminderRelativeLabel(nextService, today)
                 };
                 if (isReminderSuppressed(reminder, now)) return;
-                if (category !== "overdue" && nextService <= monthLimit) dueThisMonthCount++;
+                if (category !== "overdue") dueThisMonthCount++;
                 if (category === "overdue") reminderGroups.overdue.push(reminder);
                 else if (category === "due-soon") reminderGroups.dueSoon.push(reminder);
                 else reminderGroups.upcomingLater.push(reminder);
@@ -166,10 +251,20 @@ document.addEventListener("DOMContentLoaded", function () {
             updateReminderCount("reminder-overdue-count", overdue.length);
             updateReminderCount("reminder-due-soon-count", dueSoon.length);
             updateReminderCount("reminder-upcoming-later-count", upcomingLater.length);
+            const reminderWindowLabel = document.getElementById("reminder-window-label");
+            if (reminderWindowLabel) reminderWindowLabel.textContent = `Due in ${reminderLookAheadDays} Days`;
 
             renderReminderGroupList("reminders-overdue-list", overdue, "No overdue reminders.");
-            renderReminderGroupList("reminders-due-soon-list", dueSoon, "No reminders due this week.");
-            renderReminderGroupList("reminders-upcoming-later-list", upcomingLater, "No upcoming reminders beyond this week.");
+            renderReminderGroupList(
+                "reminders-due-soon-list",
+                dueSoon,
+                `No reminders due in the next ${reminderDueSoonDays} days.`
+            );
+            renderReminderGroupList(
+                "reminders-upcoming-later-list",
+                upcomingLater,
+                "No upcoming reminders in the selected look-ahead window."
+            );
         }
 
         const remindersSection = document.getElementById("upcoming-reminders");
@@ -204,12 +299,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
                 if (action === "snooze") {
+                    const { reminderSnoozeDays } = getAppPreferences();
                     const snoozeUntil = new Date();
-                    snoozeUntil.setDate(snoozeUntil.getDate() + REMINDER_SNOOZE_DAYS);
+                    snoozeUntil.setDate(snoozeUntil.getDate() + reminderSnoozeDays);
                     const preferences = getReminderPreferences();
                     preferences[getReminderKey(asset)] = { snoozeUntil: snoozeUntil.toISOString() };
                     saveReminderPreferences(preferences);
-                    showFeedback(`Reminder snoozed for ${REMINDER_SNOOZE_DAYS} days.`, "success");
+                    showFeedback(`Reminder snoozed for ${reminderSnoozeDays} days.`, "success");
                     renderUpcomingReminders();
                 }
             });
@@ -387,6 +483,10 @@ document.addEventListener("DOMContentLoaded", function () {
             return SUPPORTED_SERVICE_CURRENCIES.includes(normalized) ? normalized : DEFAULT_SERVICE_CURRENCY;
         }
 
+        function getPreferredServiceCurrency() {
+            return normalizeServiceCurrency(getAppPreferences().defaultServiceCurrency);
+        }
+
         function formatCurrency(value, currency = DEFAULT_SERVICE_CURRENCY) {
             const amount = Number(value) || 0;
             const normalizedCurrency = normalizeServiceCurrency(currency);
@@ -446,7 +546,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return parts.length ? parts.join("<br>") : "—";
         }
 
-        function getServiceCurrencyOptionsHtml(selectedCurrency = DEFAULT_SERVICE_CURRENCY) {
+        function getServiceCurrencyOptionsHtml(selectedCurrency = getPreferredServiceCurrency()) {
             const normalizedSelection = normalizeServiceCurrency(selectedCurrency);
             return SUPPORTED_SERVICE_CURRENCIES
                 .map(currency => `<option value="${currency}"${currency === normalizedSelection ? " selected" : ""}>${currency}</option>`)
@@ -821,11 +921,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // --- DARK MODE TOGGLE ---
         const darkModeToggle = document.getElementById("dark-mode-toggle");
+        function applyThemePreference(themeMode = getAppPreferences().themeMode) {
+            const normalizedTheme = ["light", "dark", "system"].includes(themeMode) ? themeMode : "system";
+            const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+            const shouldUseDark = normalizedTheme === "dark" || (normalizedTheme === "system" && prefersDark);
+            document.body.classList.toggle("dark-mode", shouldUseDark);
+            if (darkModeToggle) {
+                darkModeToggle.textContent = shouldUseDark ? "☀️ Light Mode" : "🌙 Dark Mode";
+            }
+        }
+        applyThemePreference();
         if (darkModeToggle) {
             darkModeToggle.addEventListener("click", () => {
-                document.body.classList.toggle("dark-mode");
-                const isDark = document.body.classList.contains("dark-mode");
-                darkModeToggle.textContent = isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
+                const nextTheme = document.body.classList.contains("dark-mode") ? "light" : "dark";
+                updateAppPreferences({ themeMode: nextTheme });
+                applyThemePreference(nextTheme);
             });
         }
 
@@ -835,21 +945,23 @@ document.addEventListener("DOMContentLoaded", function () {
             ro: { title: "Istoric Service", welcome: "Bine ai revenit, Vols40!", dashboard: "Tabloul de bord al istoricului de servicii" }
         };
         const languageSelector = document.getElementById("language-selector");
+        function applyLanguagePreference(languageCode = getAppPreferences().language) {
+            const selected = translations[languageCode] ? languageCode : "en";
+            const title = document.querySelector(".app-title");
+            if (title) title.textContent = translations[selected].title;
+            const welcome = document.querySelector(".welcome-section h2");
+            const dash = document.querySelector(".welcome-section p");
+            if (welcome) welcome.textContent = translations[selected].welcome;
+            if (dash) dash.textContent = translations[selected].dashboard;
+            if (languageSelector) languageSelector.value = selected;
+        }
+        applyLanguagePreference();
         if (languageSelector) {
             languageSelector.addEventListener("change", (event) => {
                 const selected = event.target.value;
-                const title = document.querySelector(".app-title");
-                if (title && translations[selected]) {
-                    title.textContent = translations[selected].title;
-                }
-                const welcome = document.querySelector(".welcome-section h2");
-                const dash = document.querySelector(".welcome-section p");
-                if (welcome && translations[selected]) {
-                    welcome.textContent = translations[selected].welcome;
-                }
-                if (dash && translations[selected]) {
-                    dash.textContent = translations[selected].dashboard;
-                }
+                if (!translations[selected]) return;
+                updateAppPreferences({ language: selected });
+                applyLanguagePreference(selected);
             });
         }
 
@@ -864,6 +976,108 @@ document.addEventListener("DOMContentLoaded", function () {
             feedbackTimer = setTimeout(() => {
                 toast.classList.remove("is-visible");
             }, 2400);
+        }
+
+        const openPreferencesBtn = document.getElementById("open-preferences");
+        function openPreferencesModal() {
+            let modal = document.getElementById("preferences-modal");
+            if (!modal) {
+                modal = document.createElement("div");
+                modal.id = "preferences-modal";
+                modal.style.position = "fixed";
+                modal.style.top = "0";
+                modal.style.left = "0";
+                modal.style.width = "100vw";
+                modal.style.height = "100vh";
+                modal.style.background = "rgba(0,0,0,0.5)";
+                modal.style.display = "flex";
+                modal.style.alignItems = "center";
+                modal.style.justifyContent = "center";
+                modal.style.zIndex = "2100";
+                modal.addEventListener("click", (event) => {
+                    if (event.target === modal) modal.remove();
+                });
+                document.body.appendChild(modal);
+            }
+
+            const preferences = getAppPreferences();
+            modal.innerHTML = `
+                <div class="preferences-modal-inner">
+                    <button id="close-preferences-modal" class="preferences-close" type="button" aria-label="Close preferences">&times;</button>
+                    <h3 class="preferences-modal-title">Settings &amp; Preferences</h3>
+                    <p class="preferences-modal-intro">Update your default cost currency, reminder behavior, and basic UI choices.</p>
+                    <form id="preferences-form">
+                        <div class="preferences-grid">
+                            <div class="preferences-field">
+                                <label for="pref-default-currency">Default service currency</label>
+                                <select id="pref-default-currency">${getServiceCurrencyOptionsHtml(preferences.defaultServiceCurrency)}</select>
+                            </div>
+                            <div class="preferences-field">
+                                <label for="pref-snooze-days">Reminder snooze (days)</label>
+                                <input type="number" id="pref-snooze-days" min="1" max="30" value="${preferences.reminderSnoozeDays}">
+                            </div>
+                            <div class="preferences-field">
+                                <label for="pref-due-soon-days">Due soon threshold (days)</label>
+                                <input type="number" id="pref-due-soon-days" min="1" max="30" value="${preferences.reminderDueSoonDays}">
+                            </div>
+                            <div class="preferences-field">
+                                <label for="pref-look-ahead-days">Reminder look-ahead window (days)</label>
+                                <input type="number" id="pref-look-ahead-days" min="1" max="180" value="${preferences.reminderLookAheadDays}">
+                            </div>
+                            <div class="preferences-field">
+                                <label for="pref-theme-mode">Theme mode</label>
+                                <select id="pref-theme-mode">
+                                    <option value="system"${preferences.themeMode === "system" ? " selected" : ""}>System</option>
+                                    <option value="light"${preferences.themeMode === "light" ? " selected" : ""}>Light</option>
+                                    <option value="dark"${preferences.themeMode === "dark" ? " selected" : ""}>Dark</option>
+                                </select>
+                            </div>
+                            <div class="preferences-field">
+                                <label for="pref-language">Language</label>
+                                <select id="pref-language">
+                                    <option value="en"${preferences.language === "en" ? " selected" : ""}>English</option>
+                                    <option value="ro"${preferences.language === "ro" ? " selected" : ""}>Română</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="preferences-help">Preferences are stored locally in this browser.</p>
+                        <div class="preferences-actions">
+                            <button type="button" id="cancel-preferences">Cancel</button>
+                            <button type="submit">Save Preferences</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            const closeModal = () => modal.remove();
+            const closeButton = modal.querySelector("#close-preferences-modal");
+            if (closeButton) closeButton.addEventListener("click", closeModal);
+            const cancelButton = modal.querySelector("#cancel-preferences");
+            if (cancelButton) cancelButton.addEventListener("click", closeModal);
+
+            const form = modal.querySelector("#preferences-form");
+            if (form) {
+                form.addEventListener("submit", (event) => {
+                    event.preventDefault();
+                    const nextPreferences = updateAppPreferences({
+                        defaultServiceCurrency: form.querySelector("#pref-default-currency").value,
+                        reminderSnoozeDays: form.querySelector("#pref-snooze-days").value,
+                        reminderDueSoonDays: form.querySelector("#pref-due-soon-days").value,
+                        reminderLookAheadDays: form.querySelector("#pref-look-ahead-days").value,
+                        themeMode: form.querySelector("#pref-theme-mode").value,
+                        language: form.querySelector("#pref-language").value
+                    });
+                    applyThemePreference(nextPreferences.themeMode);
+                    applyLanguagePreference(nextPreferences.language);
+                    renderUpcomingReminders();
+                    showFeedback("Preferences saved locally.", "success");
+                    closeModal();
+                });
+            }
+        }
+
+        if (openPreferencesBtn) {
+            openPreferencesBtn.addEventListener("click", openPreferencesModal);
         }
 
         // --- DROPDOWN MENUS ---
@@ -2741,7 +2955,7 @@ document.addEventListener("DOMContentLoaded", function () {
               <div class="money-currency">
                 <label for="service-currency">Currency</label>
                 <select id="service-currency">
-                  ${getServiceCurrencyOptionsHtml(DEFAULT_SERVICE_CURRENCY)}
+                  ${getServiceCurrencyOptionsHtml(getPreferredServiceCurrency())}
                 </select>
               </div>
             </div>

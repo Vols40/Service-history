@@ -12,6 +12,7 @@ Service History is a static web application for tracking assets, maintenance eve
 - Export data as JSON, CSV, and PDF
 - Dark mode toggle
 - English and Romanian language switch
+- Settings & preferences panel (default currency, reminder timing, theme/language)
 - Team roles and comments stored locally
 
 ## Tech Stack

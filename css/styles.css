@@ -62,6 +62,19 @@ body {
   background-color: #003f6f;
 }
 
+.preferences-toggle {
+  background-color: #005a9e;
+  border: none;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.preferences-toggle:hover {
+  background-color: #003f6f;
+}
+
 .language-selector {
   font-size: 0.9rem;
   padding: 5px;
@@ -996,16 +1009,76 @@ table td {
 #add-asset-modal,
 #view-assets-modal,
 #edit-asset-modal,
-#asset-history-modal {
+#asset-history-modal,
+#preferences-modal {
   padding: 12px;
 }
 
 #add-asset-modal > div,
 #view-assets-modal > div,
 #edit-asset-modal > div,
-#asset-history-modal > div {
+#asset-history-modal > div,
+#preferences-modal > div {
   max-height: calc(100vh - 24px);
   overflow-y: auto;
+}
+
+.preferences-modal-inner {
+  width: min(520px, calc(100vw - 24px));
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #d7e2ef;
+  padding: 1.2em 1.1em 1em;
+  position: relative;
+}
+
+.preferences-modal-title {
+  margin: 0 0 0.4em;
+}
+
+.preferences-modal-intro {
+  margin: 0 0 0.9em;
+  font-size: 0.9rem;
+  color: #526173;
+}
+
+.preferences-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.preferences-field label {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #3b4c5d;
+}
+
+.preferences-field input,
+.preferences-field select {
+  width: 100%;
+}
+
+.preferences-help {
+  margin: 0.7em 0 0;
+  font-size: 0.8rem;
+  color: #5f6f81;
+}
+
+.preferences-actions {
+  margin-top: 1em;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preferences-close {
+  position: absolute;
+  top: 0.7em;
+  right: 0.7em;
 }
 
 @media (max-width: 1024px) {
@@ -1130,6 +1203,14 @@ table td {
 
   .quick-actions button,
   .report-section .print-button {
+    width: 100%;
+  }
+
+  .preferences-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .preferences-actions button {
     width: 100%;
   }
 
@@ -1788,6 +1869,15 @@ body.dark-mode {
   background: #2e5f8c;
 }
 
+.dark-mode .preferences-modal-intro,
+.dark-mode .preferences-help {
+  color: #9cb0c4;
+}
+
+.dark-mode .preferences-field label {
+  color: #b9cadc;
+}
+
 .dark-mode table th {
   background-color: #111922;
 }
@@ -1806,6 +1896,7 @@ body.dark-mode {
 .dark-mode #edit-asset-modal > div,
 .dark-mode #asset-history-modal > div,
 .dark-mode #edit-history-modal > div,
+.dark-mode #preferences-modal > div,
 .dark-mode .report-section {
   background: #17202a !important;
   color: #d6dde6;
