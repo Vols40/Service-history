@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!list) return;
 
             if (upcoming.length === 0) {
-                list.innerHTML = `<li style="color:gray;">No upcoming services in the next ${daysAhead} days.</li>`;
+                list.innerHTML = `<li class="empty-state">No upcoming services in the next ${daysAhead} days.</li>`;
                 return;
             }
 
@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!list) return;
 
             if (activityList.length === 0) {
-                list.innerHTML = `<li style="color:gray;">No recent activities found.</li>`;
+                list.innerHTML = `<li class="empty-state">No recent activities yet.</li>`;
                 return;
             }
 
@@ -172,6 +172,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 overdueText,
                 `Most Serviced Asset: <b>${mostServicedAsset || "-"}</b> (${mostServicedCount})`
             ];
+            if (totalAssets === 0) {
+                stats.unshift(`<span class="empty-state">Add your first asset to start building statistics.</span>`);
+            }
 
             const list = document.getElementById("quick-statistics-list");
             if (list) list.innerHTML = stats.map(s => `<li>${s}</li>`).join("");
@@ -213,21 +216,21 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
+        let feedbackTimer = null;
+        function showFeedback(message, type = "info") {
+            const toast = document.getElementById("feedback-toast");
+            if (!toast) return;
+            toast.textContent = message;
+            toast.className = `feedback-toast feedback-${type}`;
+            requestAnimationFrame(() => toast.classList.add("is-visible"));
+            if (feedbackTimer) clearTimeout(feedbackTimer);
+            feedbackTimer = setTimeout(() => {
+                toast.classList.remove("is-visible");
+            }, 2400);
+        }
+
         // --- DROPDOWN MENUS ---
-        document.querySelectorAll('.dropdown').forEach(dropdown => {
-            const menu = dropdown.querySelector('.dropdown-menu');
-            if (menu) {
-                dropdown.addEventListener('mouseenter', () => { menu.style.display = 'block'; });
-                dropdown.addEventListener('mouseleave', () => { menu.style.display = 'none'; });
-            }
-        });
-        document.querySelectorAll('.dropdown-submenu').forEach(submenu => {
-            const items = submenu.querySelector('.dropdown-submenu-items');
-            if (items) {
-                submenu.addEventListener('mouseenter', () => { items.style.display = 'block'; });
-                submenu.addEventListener('mouseleave', () => { items.style.display = 'none'; });
-            }
-        });
+        // Menus are handled by CSS (:hover/:focus-within) to avoid hover gaps.
 
         // --- IMPORT/EXPORT & DROPBOX ---
         const importJsonInput = document.getElementById("import-json");
@@ -236,16 +239,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 const file = event.target.files[0];
                 if (!file) return;
                 if (file.type !== "application/json") {
-                    alert("Please select a valid JSON file.");
+                    showFeedback("Please select a valid JSON file.", "error");
                     return;
                 }
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
-                        const data = JSON.parse(e.target.result);
-                        alert("Imported JSON:\n" + JSON.stringify(data, null, 2));
+                        const parsedData = JSON.parse(e.target.result);
+                        const importedCount = Array.isArray(parsedData) ? parsedData.length : 1;
+                        showFeedback(`JSON file validated successfully (${importedCount} record${importedCount === 1 ? "" : "s"}).`, "success");
                     } catch {
-                        alert("Invalid JSON format.");
+                        showFeedback("Invalid JSON format.", "error");
                     }
                 };
                 reader.readAsText(file);
@@ -298,7 +302,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const dropboxBtn = document.getElementById("upload-to-dropbox");
         if (dropboxBtn) {
             dropboxBtn.addEventListener("click", () => {
-                alert("Dropbox upload is not implemented in this demo.");
+                showFeedback("Dropbox upload is not available in this demo.", "info");
             });
         }
 
@@ -481,6 +485,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     return count;
                 });
 
+                if (!counts.some(count => count > 0)) {
+                    chartDiv.innerHTML = `<p class="empty-state">No service trend data yet. Add service events to populate this chart.</p>`;
+                    return;
+                }
+
                 new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -505,7 +514,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
             } else {
-                chartDiv.textContent = "Service trend data will appear here (Chart.js not loaded).";
+                chartDiv.textContent = "Service trend data will appear here when Chart.js is available.";
             }
         }
         function renderPredictiveMaintenance() {
@@ -540,7 +549,7 @@ document.addEventListener("DOMContentLoaded", function () {
             ).join("");
 
             const ul = document.createElement("ul");
-            ul.innerHTML = soonAssets.length ? list : `<li>No predicted maintenance due soon.</li>`;
+            ul.innerHTML = soonAssets.length ? list : `<li class="empty-state">No predicted maintenance due soon.</li>`;
 
             const predDiv = document.querySelector("#analytics-section .predictive-maintenance ul");
             if (predDiv) {
@@ -738,7 +747,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         const year = form.querySelector("#asset-year").value;
                         const color = form.querySelector("#asset-color").value.trim();
                         if (!name || !type) {
-                            alert("Please fill in all fields.");
+                            showFeedback("Please fill in all required fields.", "error");
                             return;
                         }
                         // Save asset with history array and new fields
@@ -755,7 +764,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         }));
                         saveStoredAssets(assets);
                         refreshAssetDependentViews();
-                        alert("Asset added successfully!");
+                        showFeedback("Asset added successfully.", "success");
                         modal.remove();
                     });
                 }
@@ -801,7 +810,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <button type="button" data-delete-asset="${index}" style="margin-left:0.5em;">Delete</button>
                             </td>
                         </tr>`).join("")
-                : `<tr><td colspan="8" style="text-align:center;">No assets found.</td></tr>`;
+                : `<tr><td colspan="8" class="empty-state-cell">No assets available yet.</td></tr>`;
 
             modal.innerHTML = `
                     <div style="background: #fff; padding: 2em; border-radius: 8px; max-width: 900px; width: 100%; position:relative">
@@ -916,11 +925,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 const lastServiceDate = editModal.querySelector("#edit-last-service-date").value || "";
                 const nextServiceDate = editModal.querySelector("#edit-next-service-date").value || "";
                 if (!updatedName) {
-                    alert("Asset name is required.");
+                    showFeedback("Asset name is required.", "error");
                     return;
                 }
                 if (lastServiceDate && nextServiceDate && new Date(nextServiceDate) < new Date(lastServiceDate)) {
-                    alert("Next service date must be on or after the last service date.");
+                    showFeedback("Next service date must be on or after the last service date.", "error");
                     return;
                 }
 
@@ -946,7 +955,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     showAssetDetailsAndHistory(assets[assetIndex]);
                 }
                 editModal.remove();
-                alert("Asset updated successfully!");
+                showFeedback("Asset updated successfully.", "success");
             });
         }
 
@@ -972,7 +981,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const detailsModal = document.getElementById("asset-history-modal");
                 if (detailsModal) detailsModal.remove();
             }
-            alert("Asset deleted successfully!");
+            showFeedback("Asset deleted successfully.", "success");
         }
 
         if (viewAllAssetsBtn) {
@@ -995,7 +1004,7 @@ document.addEventListener("DOMContentLoaded", function () {
             listDiv.innerHTML = "";
             const team = getTeam();
             if (team.length === 0) {
-                listDiv.innerHTML = `<li>No team members. Add one below.</li>`;
+                listDiv.innerHTML = `<li class="empty-state">No team members yet. Add one below.</li>`;
             } else {
                 team.forEach((member, idx) => {
                     listDiv.innerHTML += `<li>
@@ -1068,7 +1077,7 @@ document.addEventListener("DOMContentLoaded", function () {
             globalSearchBtn.addEventListener("click", () => {
                 const query = globalSearchBar.value.trim().toLowerCase();
                 if (!query) {
-                    alert("Please enter a search term.");
+                    showFeedback("Please enter a search term.", "error");
                     return;
                 }
                 const assets = getStoredAssets();
@@ -1083,7 +1092,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     )
                 );
                 if (matched.length === 0) {
-                    alert("No matching assets found.");
+                    showFeedback("No matching assets found.", "info");
                     return;
                 }
                 showAssetDetailsAndHistory(matched[0]);
@@ -1132,7 +1141,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     </td>
                 </tr>
             `).join("")
-                : `<tr><td colspan="5" style="text-align:center;">No history events.</td></tr>`;
+                : `<tr><td colspan="5" class="empty-state-cell">No history events recorded yet.</td></tr>`;
 
             // Modal innerHTML
             modal.innerHTML = `
@@ -1207,13 +1216,13 @@ document.addEventListener("DOMContentLoaded", function () {
             if (exportBtn) {
                 exportBtn.onclick = () => {
                     if (!window.jspdf || !window.jspdf.jsPDF) {
-                        alert("jsPDF not loaded!");
+                        showFeedback("PDF export is unavailable (jsPDF not loaded).", "error");
                         return;
                     }
                     const { jsPDF } = window.jspdf;
                     const doc = new jsPDF();
                     if (typeof doc.autoTable !== "function") {
-                        alert("jsPDF-AutoTable not loaded!");
+                        showFeedback("PDF export is unavailable (AutoTable not loaded).", "error");
                         return;
                     }
 
@@ -1373,14 +1382,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? comments.map(
                     c => `<li><b>${c.author || "User"}:</b> ${c.text} <span style="color:gray;font-size:0.9em;">(${new Date(c.date).toLocaleString()})</span></li>`
                 ).join("")
-                : `<li style="color:gray;">No comments yet.</li>`;
+                : `<li class="empty-state">No comments yet. Add one to keep team notes in sync.</li>`;
         }
 
         if (addCommentButton && commentsBox) {
             addCommentButton.addEventListener("click", () => {
                 const text = commentsBox.value.trim();
                 if (!text) {
-                    alert("Please enter a comment.");
+                    showFeedback("Please enter a comment.", "error");
                     return;
                 }
                 const comments = JSON.parse(localStorage.getItem("assetComments") || "[]");
@@ -1392,6 +1401,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 localStorage.setItem("assetComments", JSON.stringify(comments));
                 commentsBox.value = "";
                 renderComments();
+                showFeedback("Comment saved.", "success");
             });
         }
         renderComments();
@@ -1497,7 +1507,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const formHtml = `
       <html>
       <head>
-        <title>Add New Asset and Service</title>
+        <title>Add Asset and Service</title>
         <style>
           body { font-family: sans-serif; margin: 2em; }
           .form-section { margin-bottom: 1.5em; }
@@ -1540,6 +1550,7 @@ document.addEventListener("DOMContentLoaded", function () {
             color: #444;
           }
           .success-message { color: green; margin: 1em 0; }
+          .success-message.error { color: #b63a3a; }
           textarea { width: 100%; min-height: 60px; margin-top: 0.5em;}
           .inline-field { display: flex; gap: 1em; align-items: center; margin-bottom: 1em; }
           .inline-field label { margin-bottom: 0; }
@@ -1564,7 +1575,7 @@ document.addEventListener("DOMContentLoaded", function () {
         </style>
       </head>
       <body>
-        <h2>Add New Asset and Performed Services</h2>
+        <h2>Add Asset and Record Services</h2>
         <form id="asset-form" enctype="multipart/form-data">
           <div class="form-section">
             <label for="asset-name">Asset Name:</label>
@@ -1676,7 +1687,7 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <button type="submit">Save Asset</button>
         </form>
-        <div class="success-message" id="success-message" style="display:none;">Asset and service info saved!</div>
+        <div class="success-message" id="success-message" style="display:none;">Asset and service information saved successfully.</div>
         <script>
           // Note: generateId and normalizeAsset are defined here as local copies because
           // this script runs in a separate browser window (new tab) opened via window.open()
@@ -1782,11 +1793,26 @@ document.addEventListener("DOMContentLoaded", function () {
             var bearingWheelsMulti = document.getElementById('bearing-wheels-checkbox').checked ? getAxleSideSelections('bearing-wheels') : null;
             var absSensorsMulti = document.getElementById('abs-sensors-checkbox').checked ? getAxleSideSelections('abs-sensors') : null;
             var brakePadsSensorsMulti = document.getElementById('brake-pads-sensors-checkbox').checked ? getAxleSideSelections('brake-pads-sensors') : null;
-      
+            function showTabStatus(message, type) {
+              var statusMessage = document.getElementById('success-message');
+              if (!statusMessage) return;
+              statusMessage.textContent = message;
+              statusMessage.classList.remove('error');
+              if (type === 'error') statusMessage.classList.add('error');
+              statusMessage.style.display = 'block';
+            }
+            function clearTabStatus() {
+              var statusMessage = document.getElementById('success-message');
+              if (!statusMessage) return;
+              statusMessage.style.display = 'none';
+              statusMessage.classList.remove('error');
+            }
+       
             if (!name || !lastServiceDate || !nextServiceDate) {
-              alert("Please fill in all required fields.");
+              showTabStatus("Please fill in all required fields.", "error");
               return;
             }
+            clearTabStatus();
       
             var fileInput = document.getElementById('service-file');
             var attachedFile = null;

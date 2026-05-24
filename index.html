@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Service History App</title>
+        <title>Service History Dashboard</title>
         <link rel="stylesheet" href="css/styles.css">
         <link rel="icon" href="data:," />
         <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -40,7 +40,7 @@
                     <a href="#">Assets</a>
                     <ul class="dropdown-menu">
                         <li><a href="#quick-statistics">Quick Statistics</a></li>
-                        <li><a href="#" class="recent-activities-link">Recent Activities</a>
+                        <li><a href="#" class="recent-activities-link">Recent Activities</a></li>
                         <li><a href="#upcoming-reminders">Upcoming Service Reminders</a></li>
 
                         <!-- Removed reports links from here -->
@@ -141,10 +141,10 @@
 
     <!-- Analytics Section -->
     <section class="analytics-page" id="analytics-section">
-        <h2>Analytics and Insights</h2>
+        <h2>Analytics &amp; Insights</h2>
         <div class="data-visualization">
             <h3>Service Trends</h3>
-            <div id="service-trends-chart" class="chart-placeholder">[Chart Placeholder]</div>
+            <div id="service-trends-chart" class="chart-placeholder">No service trend data available yet.</div>
         </div>
         <div class="predictive-maintenance">
             <h3>Predictive Maintenance</h3>
@@ -170,7 +170,7 @@
             <h3>Comments and Notes</h3>
             <p>Add comments or notes for specific assets or reports:</p>
             <textarea id="comments-box" placeholder="Write your comment here..."></textarea>
-            <button id="add-comment-button">Add Comment</button>
+            <button id="add-comment-button">Save Comment</button>
         </div>
     </section>
 
@@ -230,6 +230,7 @@
     
     <!-- Floating Action Button -->
     <button class="fab" id="fab">+</button>
+    <div id="feedback-toast" class="feedback-toast" role="status" aria-live="polite" aria-atomic="true"></div>
     
     <!-- Footer Section -->
     <footer>
