@@ -54,7 +54,9 @@ document.addEventListener("DOMContentLoaded", function () {
         function getRelativeTimeLabel(dateValue) {
             const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
             if (isNaN(date.getTime())) return "Unknown time";
-            const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+            const deltaMs = Date.now() - date.getTime();
+            if (deltaMs < -45000) return "in the future";
+            const seconds = Math.floor(Math.abs(deltaMs) / 1000);
             if (seconds < 45) return "just now";
             if (seconds < 3600) {
                 const minutes = Math.floor(seconds / 60);
@@ -76,7 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return "asset-created";
             }
             if (["service", "maintenance", "repair", "parts change"].includes(op)) {
-                return "service-logged";
+                return op === "maintenance" ? "maintenance-recorded" : "service-logged";
             }
             if (op === "updated" || op === "edit" || op === "edited" || noteLower.includes("updated")) {
                 return "asset-updated";
@@ -104,12 +106,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
             assets.forEach(asset => {
                 (asset.history || []).forEach(ev => {
-                    const eventType = mapActivityType(ev.operation || ev.type, ev.note);
-                    const normalizedType = eventType === "service-logged" && String(ev.operation || "").trim().toLowerCase() === "maintenance"
-                        ? "maintenance-recorded"
-                        : eventType;
                     activityList.push({
-                        type: normalizedType,
+                        type: mapActivityType(ev.operation || ev.type, ev.note),
                         asset: asset.name,
                         date: new Date(ev.date),
                         detail: ev.operation ? `${ev.operation}${ev.label ? ` • ${ev.label}` : ""}` : "Service Event",
