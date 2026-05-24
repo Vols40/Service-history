@@ -1677,6 +1677,30 @@ document.addEventListener("DOMContentLoaded", function () {
         </form>
         <div class="success-message" id="success-message" style="display:none;">Asset and service info saved!</div>
         <script>
+          function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+          }
+          function normalizeAsset(raw) {
+            if (!raw || typeof raw !== 'object') return null;
+            return {
+              id: raw.id || generateId(),
+              name: raw.name || '',
+              type: raw.type || '',
+              status: raw.status || 'Active',
+              vin: raw.vin || '',
+              year: raw.year || '',
+              color: raw.color || '',
+              created: raw.created || raw.lastServiceDate || new Date().toISOString(),
+              lastServiceDate: raw.lastServiceDate || '',
+              nextServiceDate: raw.nextServiceDate || '',
+              odometer: raw.odometer || '',
+              technician: raw.technician || '',
+              location: raw.location || '',
+              serviceCost: raw.serviceCost || '',
+              attachedFile: raw.attachedFile !== undefined ? raw.attachedFile : null,
+              history: Array.isArray(raw.history) ? raw.history : []
+            };
+          }
           function renderAxleSideHtml(container, serviceId) {
             var serviceAxles = ['Axle 1', 'Axle 2', 'Axle 3', 'Axle 4', 'Axle 5'];
             var sides = ['Left', 'Right'];
@@ -1782,7 +1806,6 @@ document.addEventListener("DOMContentLoaded", function () {
               var assets = Array.isArray(rawAssets) ? rawAssets : [];
               var asset = assets.find(function(a) { return a.name === name; });
               var nowISO = new Date().toISOString();
-              var newId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       
               var serviceEvent = {
                 date: lastServiceDate,
@@ -1807,30 +1830,21 @@ document.addEventListener("DOMContentLoaded", function () {
               };
       
               if (asset) {
-                if (!asset.id) { asset.id = newId; }
-                if (!asset.type) { asset.type = ""; }
-                if (!asset.status) { asset.status = "Active"; }
-                if (!asset.vin) { asset.vin = ""; }
-                if (!asset.year) { asset.year = ""; }
-                if (!asset.color) { asset.color = ""; }
-                asset.lastServiceDate = lastServiceDate;
-                asset.nextServiceDate = nextServiceDate;
-                asset.odometer = odometer;
-                asset.technician = technician;
-                asset.location = location;
-                asset.serviceCost = serviceCost;
-                asset.attachedFile = attachedFile;
-                asset.history = asset.history || [];
-                asset.history.push(serviceEvent);
+                var updatedHistory = (asset.history || []).concat([serviceEvent]);
+                var updated = normalizeAsset(Object.assign({}, asset, {
+                  lastServiceDate: lastServiceDate,
+                  nextServiceDate: nextServiceDate,
+                  odometer: odometer,
+                  technician: technician,
+                  location: location,
+                  serviceCost: serviceCost,
+                  attachedFile: attachedFile,
+                  history: updatedHistory
+                }));
+                assets[assets.indexOf(asset)] = updated;
               } else {
-                asset = {
-                  id: newId,
+                asset = normalizeAsset({
                   name: name,
-                  type: "",
-                  status: "Active",
-                  vin: "",
-                  year: "",
-                  color: "",
                   created: nowISO,
                   lastServiceDate: lastServiceDate,
                   nextServiceDate: nextServiceDate,
@@ -1840,7 +1854,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   serviceCost: serviceCost,
                   attachedFile: attachedFile,
                   history: [serviceEvent]
-                };
+                });
                 assets.push(asset);
               }
               localStorage.setItem("assets", JSON.stringify(assets));
