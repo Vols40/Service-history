@@ -195,6 +195,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const ASSETS_MODAL_COLUMNS = ["Select", "Name", "Type", "Status", "Health", "Latest Cost", "VIN", "Year", "Color", "Added", "Actions"];
         let activeAssetFilter = "all";
         let activeAssetSearchQuery = "";
+        let activeAssetSort = "name";
         let selectedAssetIds = new Set();
 
         function isServiceEvent(event) {
@@ -1388,6 +1389,28 @@ document.addEventListener("DOMContentLoaded", function () {
                 .map((asset, index) => ({ asset, index }))
                 .filter(({ asset }) => matchesAssetFilter(asset, activeAssetFilter))
                 .filter(({ asset }) => assetMatchesQuery(asset, activeAssetSearchQuery));
+
+            // Sort filtered assets
+            filteredAssets.sort((a, b) => {
+                switch (activeAssetSort) {
+                    case "next-service": {
+                        const da = a.asset.nextServiceDate ? new Date(a.asset.nextServiceDate).getTime() : Infinity;
+                        const db = b.asset.nextServiceDate ? new Date(b.asset.nextServiceDate).getTime() : Infinity;
+                        return da - db;
+                    }
+                    case "latest-cost": {
+                        const ca = getLatestServiceCost(a.asset);
+                        const cb = getLatestServiceCost(b.asset);
+                        const av = ca ? ca.amount : -1;
+                        const bv = cb ? cb.amount : -1;
+                        return bv - av;
+                    }
+                    case "name":
+                    default:
+                        return String(a.asset.name || "").localeCompare(String(b.asset.name || ""));
+                }
+            });
+
             const tableHeaderHtml = ASSETS_MODAL_COLUMNS.map(column => `<th>${column}</th>`).join("");
 
             const tableRows = filteredAssets.length
@@ -1430,6 +1453,14 @@ document.addEventListener("DOMContentLoaded", function () {
                         <div class="asset-live-search-row">
                             <input type="search" id="asset-live-search" placeholder="Live search assets..." value="${escapeHtml(activeAssetSearchQuery)}">
                             <button type="button" id="asset-search-clear">Clear</button>
+                        </div>
+                        <div class="asset-sort-row">
+                            <label for="asset-sort-select">Sort:</label>
+                            <select id="asset-sort-select">
+                                <option value="name"${activeAssetSort === "name" ? " selected" : ""}>Name (A–Z)</option>
+                                <option value="next-service"${activeAssetSort === "next-service" ? " selected" : ""}>Next Service Date</option>
+                                <option value="latest-cost"${activeAssetSort === "latest-cost" ? " selected" : ""}>Latest Cost (High→Low)</option>
+                            </select>
                         </div>
                         <div class="asset-bulk-actions">
                             <label class="asset-select-all-toggle"><input type="checkbox" id="select-all-assets"> Select all visible</label>
@@ -1478,6 +1509,14 @@ document.addEventListener("DOMContentLoaded", function () {
             const clearSearchBtn = modal.querySelector("#asset-search-clear");
             if (clearSearchBtn) {
                 clearSearchBtn.addEventListener("click", () => renderAssetsModal(activeAssetFilter, ""));
+            }
+
+            const sortSelect = modal.querySelector("#asset-sort-select");
+            if (sortSelect) {
+                sortSelect.addEventListener("change", () => {
+                    activeAssetSort = sortSelect.value;
+                    renderAssetsModal(activeAssetFilter, activeAssetSearchQuery);
+                });
             }
 
             const filteredAssetIds = filteredAssets.map(({ asset }) => asset.id);
@@ -1896,6 +1935,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     const visual = getHistoryEventVisual(event.operation || event.type);
                     const operationText = String(event.operation || event.type || "Event").trim();
                     const serviceCostEntry = getServiceCostEntry(event, asset);
+                    const af = event.attachedFile;
+                    const attachmentBadgeHtml = af && af.data
+                        ? `<a class="history-attachment-badge" href="${af.data}" download="${escapeHtml(af.name || "Attachment")}" title="Download ${escapeHtml(af.name || "Attachment")}">📎 ${escapeHtml(af.name || "Attachment")}</a>`
+                        : "";
                     return `
                         ${showGroupHeader ? `<li class="history-group-label">${escapeHtml(timelineGroup)}</li>` : ""}
                         <li class="history-timeline-item">
@@ -1905,6 +1948,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     <span class="history-operation-badge ${visual.badgeClass}">${escapeHtml(operationText || "Event")}</span>
                                     ${event.label ? `<span class="history-label-pill">${escapeHtml(event.label)}</span>` : ""}
                                     ${serviceCostEntry ? `<span class="history-cost-pill">${escapeHtml(formatCurrency(serviceCostEntry.amount, serviceCostEntry.currency))}</span>` : ""}
+                                    ${attachmentBadgeHtml}
                                 </div>
                                 <div class="history-timeline-note">${escapeHtml(event.note || "No additional note provided.")}</div>
                                 <div class="history-timeline-meta">
@@ -2036,16 +2080,20 @@ document.addEventListener("DOMContentLoaded", function () {
                         </label>
                     </div>
                     <div class="form-row">
-                        <label>Service Cost Amount:
-                            <input type="number" id="history-service-cost" min="0" step="0.01" placeholder="e.g. 100.00" style="width:100%;">
-                        </label>
-                    </div>
-                    <div class="form-row">
-                        <label>Service Cost Currency:
-                            <select id="history-service-currency" style="width:100%;">
-                                ${getServiceCurrencyOptionsHtml()}
-                            </select>
-                        </label>
+                        <span style="font-size:0.88rem;font-weight:500;">Service Cost:</span>
+                        <div class="cost-input-group">
+                            <div class="cost-amount-wrap">
+                                <span class="cost-sub-label">Amount</span>
+                                <input type="number" id="history-service-cost" min="0" step="0.01" placeholder="e.g. 100.00">
+                            </div>
+                            <div class="cost-currency-wrap">
+                                <span class="cost-sub-label">Currency</span>
+                                <select id="history-service-currency">
+                                    ${getServiceCurrencyOptionsHtml()}
+                                </select>
+                            </div>
+                        </div>
+                        <span class="cost-helper-text">No automatic currency conversion is performed.</span>
                     </div>
                     <div class="asset-detail-form-actions">
                         <button type="submit">Add Event</button>
@@ -2197,17 +2245,21 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <input type="text" id="edit-note" value="${escapeHtml(h.note || "")}" required>
                             </label>
                         </div>
-                        <div style="margin-bottom:0.5em;">
-                            <label>Service Cost Amount:
-                                <input type="number" id="edit-service-cost" value="${parseCostValue(h.serviceCost) > 0 ? parseCostValue(h.serviceCost) : ""}" min="0" step="0.01">
-                            </label>
-                        </div>
-                        <div style="margin-bottom:0.5em;">
-                            <label>Service Cost Currency:
-                                <select id="edit-service-currency">
-                                    ${getServiceCurrencyOptionsHtml(h.serviceCurrency || asset.serviceCurrency)}
-                                </select>
-                            </label>
+                        <div style="margin-bottom:0.8em;">
+                            <span style="font-size:0.92em;font-weight:500;display:block;margin-bottom:0.35em;">Service Cost:</span>
+                            <div class="edit-cost-group">
+                                <div class="edit-cost-amount">
+                                    <label class="edit-cost-sub-label" for="edit-service-cost">Amount</label>
+                                    <input type="number" id="edit-service-cost" value="${parseCostValue(h.serviceCost) > 0 ? parseCostValue(h.serviceCost) : ""}" min="0" step="0.01">
+                                </div>
+                                <div class="edit-cost-currency">
+                                    <label class="edit-cost-sub-label" for="edit-service-currency">Currency</label>
+                                    <select id="edit-service-currency">
+                                        ${getServiceCurrencyOptionsHtml(h.serviceCurrency || asset.serviceCurrency)}
+                                    </select>
+                                </div>
+                            </div>
+                            <span class="edit-cost-helper">No automatic currency conversion is performed.</span>
                         </div>
                         <button type="submit">Save</button>
                     </form>
@@ -2430,6 +2482,38 @@ document.addEventListener("DOMContentLoaded", function () {
           textarea { width: 100%; min-height: 60px; margin-top: 0.5em;}
           .inline-field { display: flex; gap: 1em; align-items: center; margin-bottom: 1em; }
           .inline-field label { margin-bottom: 0; }
+          .money-input-group {
+            display: flex;
+            gap: 0.75em;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            margin-top: 0.3em;
+          }
+          .money-amount { flex: 1 1 120px; min-width: 100px; }
+          .money-currency { flex: 0 0 auto; }
+          .money-amount label, .money-currency label {
+            display: block;
+            font-size: 0.82em;
+            font-weight: 600;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 3px;
+          }
+          .money-amount input, .money-currency select {
+            width: 100%;
+            padding: 0.35em 0.5em;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 0.97em;
+          }
+          .money-currency select { min-width: 80px; width: 80px; }
+          .money-helper {
+            font-size: 0.78em;
+            color: #777;
+            margin: 0.3em 0 0;
+            font-style: italic;
+          }
           .services-columns {
             display: flex;
             gap: 2em;
@@ -2473,13 +2557,20 @@ document.addEventListener("DOMContentLoaded", function () {
             <label for="location">Service Location:</label>
             <input type="text" id="location" placeholder="(optional)">
           </div>
-          <div class="form-section inline-field">
-            <label for="service-cost">Service Cost:</label>
-            <input type="number" id="service-cost" min="0" step="0.01" placeholder="e.g. 100.00">
-            <label for="service-currency">Currency:</label>
-            <select id="service-currency">
-              ${getServiceCurrencyOptionsHtml(DEFAULT_SERVICE_CURRENCY)}
-            </select>
+          <div class="form-section">
+            <div class="money-input-group">
+              <div class="money-amount">
+                <label for="service-cost">Service Cost Amount</label>
+                <input type="number" id="service-cost" min="0" step="0.01" placeholder="e.g. 100.00">
+              </div>
+              <div class="money-currency">
+                <label for="service-currency">Currency</label>
+                <select id="service-currency">
+                  ${getServiceCurrencyOptionsHtml(DEFAULT_SERVICE_CURRENCY)}
+                </select>
+              </div>
+            </div>
+            <p class="money-helper">No automatic currency conversion is performed.</p>
           </div>
           <div class="form-section">
             <label for="service-file">Attach File (photo or PDF):</label>
