@@ -105,6 +105,13 @@ document.addEventListener("DOMContentLoaded", function () {
             { value: "active", label: "Active" },
             { value: "out-of-service", label: "Out of Service" }
         ];
+        const ASSET_HEALTH_SCORES = {
+            healthy: 92,
+            dueSoon: 68,
+            attention: 35,
+            outOfService: 20
+        };
+        const ASSETS_MODAL_COLUMN_COUNT = 9;
         let activeAssetFilter = "all";
 
         function getAssetStatusInfo(asset, now = new Date()) {
@@ -126,20 +133,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
             let healthLabel = "Healthy";
             let healthTone = "good";
-            let healthScore = 92;
+            let healthScore = ASSET_HEALTH_SCORES.healthy;
 
             if (isOutOfService) {
                 healthLabel = "Out of Service";
                 healthTone = "bad";
-                healthScore = 20;
+                healthScore = ASSET_HEALTH_SCORES.outOfService;
             } else if (isOverdue) {
                 healthLabel = "Attention";
                 healthTone = "bad";
-                healthScore = 35;
+                healthScore = ASSET_HEALTH_SCORES.attention;
             } else if (isDueSoon) {
                 healthLabel = "Due Soon";
                 healthTone = "warn";
-                healthScore = 68;
+                healthScore = ASSET_HEALTH_SCORES.dueSoon;
             }
 
             return { statusText, statusLower, isOutOfService, isOverdue, isDueSoon, healthLabel, healthTone, healthScore };
@@ -233,7 +240,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 { label: "Overdue Services", value: overdueServices, action: "open-overdue-assets" },
                 { label: "Upcoming Services", value: upcomingServices, action: "open-due-soon-assets" },
                 { label: "Completed Services", value: completedServices, action: "open-service-summary" },
-                { label: "Most Serviced Asset", value: mostServicedAsset || "-", detail: mostServicedCount ? `${mostServicedCount} events` : "No service events yet", action: "open-most-serviced-asset", assetName: mostServicedAsset || "" }
+                { label: "Most Serviced Asset", value: mostServicedAsset || "-", detail: mostServicedCount ? `${mostServicedCount} service events` : "No service events yet", action: "open-most-serviced-asset", assetName: mostServicedAsset || "" }
             ];
 
             const list = document.getElementById("quick-statistics-list");
@@ -941,7 +948,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <button type="button" data-delete-asset="${index}" style="margin-left:0.5em;">Delete</button>
                             </td>
                         </tr>`).join("")
-                : `<tr><td colspan="9" class="empty-state-cell">No assets match this filter yet.</td></tr>`;
+                : `<tr><td colspan="${ASSETS_MODAL_COLUMN_COUNT}" class="empty-state-cell">No assets match this filter yet.</td></tr>`;
 
             const modalFilterChips = DASHBOARD_FILTER_CHIPS.map(chip => `
                 <button type="button" class="filter-chip${activeAssetFilter === chip.value ? " is-active" : ""}" data-asset-filter="${chip.value}">${chip.label}</button>
