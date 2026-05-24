@@ -99,6 +99,14 @@ document.addEventListener("DOMContentLoaded", function () {
             return meta[type] || meta.activity;
         }
 
+        function formatActivityOperationLabel(operation) {
+            return String(operation || "")
+                .split(" ")
+                .filter(Boolean)
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ");
+        }
+
         function renderRecentActivities(limit = 15) {
             const assets = getStoredAssets();
             const comments = JSON.parse(localStorage.getItem("assetComments") || "[]");
@@ -107,11 +115,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
             assets.forEach(asset => {
                 (asset.history || []).forEach(ev => {
+                    const operationLabel = formatActivityOperationLabel(ev.operation || ev.type);
                     activityList.push({
                         type: mapActivityType(ev.operation || ev.type, ev.note),
                         asset: asset.name,
                         date: new Date(ev.date),
-                        detail: ev.operation ? `${ev.operation}${ev.label ? `${ACTIVITY_DETAIL_SEPARATOR}${ev.label}` : ""}` : "Service Event",
+                        detail: operationLabel ? `${operationLabel}${ev.label ? `${ACTIVITY_DETAIL_SEPARATOR}${ev.label}` : ""}` : "Service Event",
                         note: ev.note || ""
                     });
                 });
@@ -1149,7 +1158,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const updatedHistory = Array.isArray(asset.history) ? [...asset.history] : [];
                 updatedHistory.push({
                     date: updatedAt,
-                    operation: "Updated",
+                    operation: "updated",
                     label: "Info",
                     note: "Asset details updated"
                 });
