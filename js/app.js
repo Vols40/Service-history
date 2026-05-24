@@ -550,6 +550,90 @@ document.addEventListener("DOMContentLoaded", function () {
         renderServiceTrendsChart();
         renderPredictiveMaintenance();
 
+        function getStoredAssets() {
+            const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+            return Array.isArray(assets) ? assets : [];
+        }
+
+        function saveStoredAssets(assets) {
+            localStorage.setItem("assets", JSON.stringify(assets));
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function formatDisplayDate(value, fallback = "—") {
+            if (!value) return fallback;
+            const date = new Date(value);
+            return isNaN(date.getTime()) ? fallback : date.toLocaleString();
+        }
+
+        function formatDateInputValue(value) {
+            if (!value) return "";
+            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+            const date = new Date(value);
+            if (isNaN(date.getTime())) return "";
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        function findAssetIndex(asset, assets = getStoredAssets()) {
+            if (!asset) return -1;
+            const targetName = typeof asset.name === "string" ? asset.name : "";
+            const targetCreated = asset.created || asset.lastServiceDate || "";
+            const targetVin = asset.vin || "";
+            return assets.findIndex(candidate => {
+                if (!candidate) return false;
+                const candidateName = typeof candidate.name === "string" ? candidate.name : "";
+                const candidateCreated = candidate.created || candidate.lastServiceDate || "";
+                const candidateVin = candidate.vin || "";
+                if (targetCreated && candidateCreated && targetName === candidateName && targetCreated === candidateCreated) {
+                    return true;
+                }
+                if (targetVin && candidateVin && targetName === candidateName && targetVin === candidateVin) {
+                    return true;
+                }
+                return !targetCreated && !targetVin && targetName && targetName === candidateName;
+            });
+        }
+
+        function refreshAssetDependentViews() {
+            renderUpcomingReminders();
+            renderRecentActivities();
+            renderQuickStatistics();
+            renderServiceSummary();
+            renderAssetPerformance();
+            renderServiceHistoryLog();
+            renderServiceTrendsChart();
+            renderPredictiveMaintenance();
+        }
+
+        function isAssetShownInDetailsModal(asset) {
+            const modal = document.getElementById("asset-history-modal");
+            if (!modal || !asset) return false;
+            const modalName = modal.dataset.assetName || "";
+            const modalCreated = modal.dataset.assetCreated || "";
+            const modalVin = modal.dataset.assetVin || "";
+            const assetName = asset.name || "";
+            const assetCreated = asset.created || asset.lastServiceDate || "";
+            const assetVin = asset.vin || "";
+            if (modalCreated && assetCreated && modalName && assetName) {
+                return modalCreated === assetCreated && modalName === assetName;
+            }
+            if (modalVin && assetVin && modalName && assetName) {
+                return modalVin === assetVin && modalName === assetName;
+            }
+            return modalName && assetName && modalName === assetName;
+        }
+
         // ========== HOME SECTION FUNCTIONALITY ==========
         // --- Add New Asset (with modal form & history support) ---
         const addNewAssetBtn = document.getElementById("add-new-asset");
@@ -623,7 +707,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             return;
                         }
                         // Save asset with history array and new fields
-                        const assets = JSON.parse(localStorage.getItem("assets") || "[]");
+                        const assets = getStoredAssets();
                         const created = new Date().toISOString();
                         assets.push({
                             name, type, status, vin, year, color, created,
@@ -634,7 +718,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                 note: "Asset created"
                             }]
                         });
-                        localStorage.setItem("assets", JSON.stringify(assets));
+                        saveStoredAssets(assets);
+                        refreshAssetDependentViews();
                         alert("Asset added successfully!");
                         modal.remove();
                     });
@@ -646,36 +731,45 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // --- View All Assets ---
         const viewAllAssetsBtn = document.getElementById("view-all-assets");
-        if (viewAllAssetsBtn) {
-            viewAllAssetsBtn.addEventListener("click", () => {
-                let modal = document.getElementById("view-assets-modal");
-                if (!modal) {
-                    modal = document.createElement("div");
-                    modal.id = "view-assets-modal";
-                    modal.style.position = "fixed";
-                    modal.style.top = "0";
-                    modal.style.left = "0";
-                    modal.style.width = "100vw";
-                    modal.style.height = "100vh";
-                    modal.style.background = "rgba(0,0,0,0.5)";
-                    modal.style.display = "flex";
-                    modal.style.alignItems = "center";
-                    modal.style.justifyContent = "center";
-                    modal.style.zIndex = "1000";
-                    const assets = JSON.parse(localStorage.getItem("assets") || "[]");
-                    let tableRows = assets.length
-                        ? assets.map(a => `<tr>
-                        <td>${a.name}</td>
-                        <td>${a.type}</td>
-                        <td>${a.status}</td>
-                        <td>${a.vin || ""}</td>
-                        <td>${a.year || ""}</td>
-                        <td>${a.color || ""}</td>
-                        <td>${new Date(a.created).toLocaleString()}</td>
-                    </tr>`).join("")
-                        : `<tr><td colspan="7" style="text-align:center;">No assets found.</td></tr>`;
-                    modal.innerHTML = `
-                    <div style="background: #fff; padding: 2em; border-radius: 8px; max-width: 700px; width: 100%; position:relative">
+        function renderAssetsModal() {
+            let modal = document.getElementById("view-assets-modal");
+            if (!modal) {
+                modal = document.createElement("div");
+                modal.id = "view-assets-modal";
+                modal.style.position = "fixed";
+                modal.style.top = "0";
+                modal.style.left = "0";
+                modal.style.width = "100vw";
+                modal.style.height = "100vh";
+                modal.style.background = "rgba(0,0,0,0.5)";
+                modal.style.display = "flex";
+                modal.style.alignItems = "center";
+                modal.style.justifyContent = "center";
+                modal.style.zIndex = "1000";
+                modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
+                document.body.appendChild(modal);
+            }
+
+            const assets = getStoredAssets();
+            const tableRows = assets.length
+                ? assets.map((asset, index) => `
+                        <tr>
+                            <td>${escapeHtml(asset.name || "—")}</td>
+                            <td>${escapeHtml(asset.type || "—")}</td>
+                            <td>${escapeHtml(asset.status || "—")}</td>
+                            <td>${escapeHtml(asset.vin || "—")}</td>
+                            <td>${escapeHtml(asset.year || "—")}</td>
+                            <td>${escapeHtml(asset.color || "—")}</td>
+                            <td>${escapeHtml(formatDisplayDate(asset.created || asset.lastServiceDate))}</td>
+                            <td>
+                                <button type="button" data-edit-asset="${index}">Edit</button>
+                                <button type="button" data-delete-asset="${index}" style="margin-left:0.5em;">Delete</button>
+                            </td>
+                        </tr>`).join("")
+                : `<tr><td colspan="8" style="text-align:center;">No assets found.</td></tr>`;
+
+            modal.innerHTML = `
+                    <div style="background: #fff; padding: 2em; border-radius: 8px; max-width: 900px; width: 100%; position:relative">
                         <button id="close-assets-modal" style="position:absolute;top:1em;right:1em;font-size:1.2em;">&times;</button>
                         <h2>All Assets</h2>
                         <div style="max-height:60vh; overflow-y:auto;">
@@ -689,6 +783,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                         <th>Year</th>
                                         <th>Color</th>
                                         <th>Added</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -698,12 +793,149 @@ document.addEventListener("DOMContentLoaded", function () {
                         </div>
                     </div>
                 `;
-                    document.body.appendChild(modal);
 
-                    modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
-                    modal.querySelector("#close-assets-modal").addEventListener("click", () => modal.remove());
-                }
+            modal.querySelector("#close-assets-modal").addEventListener("click", () => modal.remove());
+            modal.querySelectorAll("button[data-edit-asset]").forEach(btn => {
+                btn.addEventListener("click", () => openEditAssetModal(parseInt(btn.getAttribute("data-edit-asset"), 10)));
             });
+            modal.querySelectorAll("button[data-delete-asset]").forEach(btn => {
+                btn.addEventListener("click", () => deleteAsset(parseInt(btn.getAttribute("data-delete-asset"), 10)));
+            });
+        }
+
+        function openEditAssetModal(assetIndex) {
+            const assets = getStoredAssets();
+            const asset = assets[assetIndex];
+            if (!asset) {
+                renderAssetsModal();
+                return;
+            }
+
+            let editModal = document.getElementById("edit-asset-modal");
+            if (editModal) editModal.remove();
+
+            const currentStatus = asset.status || "Active";
+            const statusOptions = Array.from(new Set([currentStatus, "Active", "Inactive"]));
+            editModal = document.createElement("div");
+            editModal.id = "edit-asset-modal";
+            editModal.style.position = "fixed";
+            editModal.style.top = "0";
+            editModal.style.left = "0";
+            editModal.style.width = "100vw";
+            editModal.style.height = "100vh";
+            editModal.style.background = "rgba(0,0,0,0.5)";
+            editModal.style.display = "flex";
+            editModal.style.alignItems = "center";
+            editModal.style.justifyContent = "center";
+            editModal.style.zIndex = "2500";
+            editModal.innerHTML = `
+                <div style="background: #fff; padding: 2em; border-radius: 8px; max-width: 500px; width: 100%; position:relative">
+                    <button id="close-edit-asset-modal" style="position:absolute;top:1em;right:1em;font-size:1.2em;">&times;</button>
+                    <h2>Edit Asset</h2>
+                    <form id="edit-asset-form">
+                        <div style="margin-bottom:1em;">
+                            <label for="edit-asset-name">Name:</label>
+                            <input type="text" id="edit-asset-name" required style="width:100%" value="${escapeHtml(asset.name || "")}">
+                        </div>
+                        <div style="margin-bottom:1em;">
+                            <label for="edit-asset-type">Type:</label>
+                            <input type="text" id="edit-asset-type" style="width:100%" value="${escapeHtml(asset.type || "")}">
+                        </div>
+                        <div style="margin-bottom:1em;">
+                            <label for="edit-asset-status">Status:</label>
+                            <select id="edit-asset-status" style="width:100%">
+                                ${statusOptions.map(status => `<option value="${escapeHtml(status)}"${status === currentStatus ? " selected" : ""}>${escapeHtml(status)}</option>`).join("")}
+                            </select>
+                        </div>
+                        <div style="margin-bottom:1em;">
+                            <label for="edit-asset-vin">VIN:</label>
+                            <input type="text" id="edit-asset-vin" style="width:100%" value="${escapeHtml(asset.vin || "")}">
+                        </div>
+                        <div style="margin-bottom:1em;">
+                            <label for="edit-asset-year">Year of Manufacturing:</label>
+                            <input type="number" id="edit-asset-year" min="1900" max="2100" style="width:100%" value="${escapeHtml(asset.year || "")}">
+                        </div>
+                        <div style="margin-bottom:1em;">
+                            <label for="edit-asset-color">Color:</label>
+                            <input type="text" id="edit-asset-color" style="width:100%" value="${escapeHtml(asset.color || "")}">
+                        </div>
+                        <div style="margin-bottom:1em;">
+                            <label for="edit-last-service-date">Last Service Date:</label>
+                            <input type="date" id="edit-last-service-date" style="width:100%" value="${escapeHtml(formatDateInputValue(asset.lastServiceDate))}">
+                        </div>
+                        <div style="margin-bottom:1em;">
+                            <label for="edit-next-service-date">Next Service Date:</label>
+                            <input type="date" id="edit-next-service-date" style="width:100%" value="${escapeHtml(formatDateInputValue(asset.nextServiceDate))}">
+                        </div>
+                        <button type="submit">Save Changes</button>
+                    </form>
+                </div>
+            `;
+            document.body.appendChild(editModal);
+
+            editModal.querySelector("#close-edit-asset-modal").addEventListener("click", () => editModal.remove());
+            editModal.addEventListener("click", (e) => { if (e.target === editModal) editModal.remove(); });
+            editModal.querySelector("#edit-asset-form").addEventListener("submit", (e) => {
+                e.preventDefault();
+                const updatedName = editModal.querySelector("#edit-asset-name").value.trim();
+                if (!updatedName) {
+                    alert("Asset name is required.");
+                    return;
+                }
+
+                const originalAsset = { ...asset };
+                assets[assetIndex] = {
+                    ...asset,
+                    name: updatedName,
+                    type: editModal.querySelector("#edit-asset-type").value.trim(),
+                    status: editModal.querySelector("#edit-asset-status").value,
+                    vin: editModal.querySelector("#edit-asset-vin").value.trim(),
+                    year: editModal.querySelector("#edit-asset-year").value,
+                    color: editModal.querySelector("#edit-asset-color").value.trim(),
+                    created: asset.created || asset.lastServiceDate || new Date().toISOString(),
+                    lastServiceDate: editModal.querySelector("#edit-last-service-date").value || "",
+                    nextServiceDate: editModal.querySelector("#edit-next-service-date").value || "",
+                    history: Array.isArray(asset.history) ? asset.history : []
+                };
+
+                saveStoredAssets(assets);
+                refreshAssetDependentViews();
+                renderAssetsModal();
+                if (isAssetShownInDetailsModal(originalAsset)) {
+                    showAssetDetailsAndHistory(assets[assetIndex]);
+                }
+                editModal.remove();
+                alert("Asset updated successfully!");
+            });
+        }
+
+        function deleteAsset(assetIndex) {
+            const assets = getStoredAssets();
+            const asset = assets[assetIndex];
+            if (!asset) {
+                renderAssetsModal();
+                return;
+            }
+
+            const assetLabel = asset.name || `asset #${assetIndex + 1}`;
+            if (!window.confirm(`Delete "${assetLabel}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            const shouldCloseDetails = isAssetShownInDetailsModal(asset);
+            assets.splice(assetIndex, 1);
+            saveStoredAssets(assets);
+            refreshAssetDependentViews();
+            renderAssetsModal();
+            if (shouldCloseDetails) {
+                const detailsModal = document.getElementById("asset-history-modal");
+                if (detailsModal) detailsModal.remove();
+            }
+            alert("Asset deleted successfully!");
+        }
+
+        if (viewAllAssetsBtn) {
+            viewAllAssetsBtn.addEventListener("click", renderAssetsModal);
         }
 
 
@@ -841,15 +1073,18 @@ document.addEventListener("DOMContentLoaded", function () {
             modal.style.alignItems = "center";
             modal.style.justifyContent = "center";
             modal.style.zIndex = "2000";
+            modal.dataset.assetName = asset.name || "";
+            modal.dataset.assetCreated = asset.created || asset.lastServiceDate || "";
+            modal.dataset.assetVin = asset.vin || "";
 
             // Build history rows
             let historyRows = asset.history && asset.history.length
                 ? asset.history.map((h, i) => `
                 <tr>
-                    <td>${new Date(h.date).toLocaleString()}</td>
-                    <td>${h.operation || ""}</td>
-                    <td>${h.label || ""}</td>
-                    <td>${h.note || ""}</td>
+                    <td>${escapeHtml(formatDisplayDate(h.date, ""))}</td>
+                    <td>${escapeHtml(h.operation || "")}</td>
+                    <td>${escapeHtml(h.label || "")}</td>
+                    <td>${escapeHtml(h.note || "")}</td>
                     <td>
                         <button data-edit="${i}">Edit</button>
                     </td>
@@ -862,13 +1097,15 @@ document.addEventListener("DOMContentLoaded", function () {
         <div style="background: #fff; padding: 2em; border-radius: 8px; min-width:350px; max-width:650px; position:relative">
             <button id="close-history-modal" style="position:absolute;top:1em;right:1em;font-size:1.2em;">&times;</button>
             <h2>Asset Details</h2>
-            <div><b>Name:</b> ${asset.name}</div>
-            <div><b>Type:</b> ${asset.type}</div>
-            <div><b>Status:</b> ${asset.status}</div>
-            <div><b>VIN:</b> ${asset.vin || ""}</div>
-            <div><b>Year of Manufacturing:</b> ${asset.year || ""}</div>
-            <div><b>Color:</b> ${asset.color || ""}</div>
-            <div><b>Added:</b> ${new Date(asset.created).toLocaleString()}</div>
+            <div><b>Name:</b> ${escapeHtml(asset.name || "—")}</div>
+            <div><b>Type:</b> ${escapeHtml(asset.type || "—")}</div>
+            <div><b>Status:</b> ${escapeHtml(asset.status || "—")}</div>
+            <div><b>VIN:</b> ${escapeHtml(asset.vin || "—")}</div>
+            <div><b>Year of Manufacturing:</b> ${escapeHtml(asset.year || "—")}</div>
+            <div><b>Color:</b> ${escapeHtml(asset.color || "—")}</div>
+            <div><b>Last Service Date:</b> ${escapeHtml(formatDisplayDate(asset.lastServiceDate))}</div>
+            <div><b>Next Service Date:</b> ${escapeHtml(formatDisplayDate(asset.nextServiceDate))}</div>
+            <div><b>Added:</b> ${escapeHtml(formatDisplayDate(asset.created || asset.lastServiceDate))}</div>
             <hr>
             <h3>Service History</h3>
             <div style="max-height:40vh; overflow-y:auto;">
@@ -992,14 +1229,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 const operation = modal.querySelector("#history-operation").value;
                 const label = modal.querySelector("#history-label").value;
                 const note = modal.querySelector("#history-note").value.trim();
-                const assets = JSON.parse(localStorage.getItem("assets") || "[]");
-                const idx = assets.findIndex(a => a.name === asset.name && a.created === asset.created);
+                const assets = getStoredAssets();
+                const idx = findAssetIndex(asset, assets);
                 if (idx !== -1) {
                     assets[idx].history = assets[idx].history || [];
                     assets[idx].history.push({
                         date: new Date().toISOString(), operation, label, note
                     });
-                    localStorage.setItem("assets", JSON.stringify(assets));
+                    saveStoredAssets(assets);
+                    refreshAssetDependentViews();
                     showAssetDetailsAndHistory(assets[idx]);
                 }
             });
@@ -1026,7 +1264,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 editModal.style.alignItems = "center";
                 editModal.style.justifyContent = "center";
                 editModal.style.zIndex = "3000";
-                const h = asset.history[hidx];
+                const h = (asset.history || [])[hidx] || {};
                 editModal.innerHTML = `
                 <div style="background: #fff; padding: 2em; border-radius: 8px; min-width:300px; max-width:400px; position:relative">
                     <button id="close-edit-history" style="position:absolute;top:1em;right:1em;font-size:1.2em;">&times;</button>
@@ -1034,17 +1272,17 @@ document.addEventListener("DOMContentLoaded", function () {
                     <form id="edit-history-form">
                         <div style="margin-bottom:0.5em;">
                             <label>Operation:
-                                <input type="text" id="edit-operation" value="${h.operation || ""}" required>
+                                <input type="text" id="edit-operation" value="${escapeHtml(h.operation || "")}" required>
                             </label>
                         </div>
                         <div style="margin-bottom:0.5em;">
                             <label>Label:
-                                <input type="text" id="edit-label" value="${h.label || ""}" required>
+                                <input type="text" id="edit-label" value="${escapeHtml(h.label || "")}" required>
                             </label>
                         </div>
                         <div style="margin-bottom:0.5em;">
                             <label>Note:
-                                <input type="text" id="edit-note" value="${h.note || ""}" required>
+                                <input type="text" id="edit-note" value="${escapeHtml(h.note || "")}" required>
                             </label>
                         </div>
                         <button type="submit">Save</button>
@@ -1059,13 +1297,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     const operation = editModal.querySelector("#edit-operation").value;
                     const label = editModal.querySelector("#edit-label").value;
                     const note = editModal.querySelector("#edit-note").value;
-                    const assets = JSON.parse(localStorage.getItem("assets") || "[]");
-                    const idx = assets.findIndex(a => a.name === asset.name && a.created === asset.created);
-                    if (idx !== -1) {
+                    const assets = getStoredAssets();
+                    const idx = findAssetIndex(asset, assets);
+                    if (idx !== -1 && assets[idx].history && assets[idx].history[hidx]) {
                         assets[idx].history[hidx].operation = operation;
                         assets[idx].history[hidx].label = label;
                         assets[idx].history[hidx].note = note;
-                        localStorage.setItem("assets", JSON.stringify(assets));
+                        saveStoredAssets(assets);
+                        refreshAssetDependentViews();
                         showAssetDetailsAndHistory(assets[idx]);
                         editModal.remove();
                     }
