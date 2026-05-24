@@ -1816,7 +1816,55 @@ body.dark-mode {
   border: 1px solid #c5d4e0;
 }
 
-/* ---- Dark mode: cost group ---- */
+/* ---- Edit History Event modal: cost section ---- */
+.edit-cost-group {
+  display: flex;
+  gap: 0.5em;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: 0.2em;
+}
+
+.edit-cost-amount {
+  flex: 1;
+  min-width: 80px;
+}
+
+.edit-cost-amount input {
+  width: 100%;
+  padding: 0.3em 0.4em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.edit-cost-currency {
+  flex: 0 0 auto;
+}
+
+.edit-cost-currency select {
+  padding: 0.3em 0.4em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-width: 75px;
+}
+
+.edit-cost-sub-label {
+  display: block;
+  font-size: 0.75em;
+  font-weight: 600;
+  color: #6b7a8a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.edit-cost-helper {
+  display: block;
+  font-size: 0.75em;
+  color: #888;
+  margin-top: 0.3em;
+  font-style: italic;
+}
 .dark-mode .cost-input-group .cost-sub-label {
   color: #8ea4ba;
 }

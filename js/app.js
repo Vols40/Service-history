@@ -1937,7 +1937,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     const serviceCostEntry = getServiceCostEntry(event, asset);
                     const af = event.attachedFile;
                     const attachmentBadgeHtml = af && af.data
-                        ? `<a class="history-attachment-badge" href="${af.data}" download="${escapeHtml(af.name || "attachment")}" title="Download ${escapeHtml(af.name || "attachment")}">📎 ${escapeHtml(af.name || "Attachment")}</a>`
+                        ? `<a class="history-attachment-badge" href="${af.data}" download="${escapeHtml(af.name || "Attachment")}" title="Download ${escapeHtml(af.name || "Attachment")}">📎 ${escapeHtml(af.name || "Attachment")}</a>`
                         : "";
                     return `
                         ${showGroupHeader ? `<li class="history-group-label">${escapeHtml(timelineGroup)}</li>` : ""}
@@ -2093,7 +2093,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 </select>
                             </div>
                         </div>
-                        <span class="cost-helper-text">No automatic conversion between currencies.</span>
+                        <span class="cost-helper-text">No automatic currency conversion is performed.</span>
                     </div>
                     <div class="asset-detail-form-actions">
                         <button type="submit">Add Event</button>
@@ -2247,19 +2247,19 @@ document.addEventListener("DOMContentLoaded", function () {
                         </div>
                         <div style="margin-bottom:0.8em;">
                             <span style="font-size:0.92em;font-weight:500;display:block;margin-bottom:0.35em;">Service Cost:</span>
-                            <div style="display:flex;gap:0.5em;align-items:flex-end;flex-wrap:wrap;">
-                                <div style="flex:1;min-width:80px;">
-                                    <label style="display:block;font-size:0.75em;font-weight:600;color:#6b7a8a;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Amount</label>
-                                    <input type="number" id="edit-service-cost" value="${parseCostValue(h.serviceCost) > 0 ? parseCostValue(h.serviceCost) : ""}" min="0" step="0.01" style="width:100%;padding:0.3em 0.4em;border:1px solid #ccc;border-radius:4px;">
+                            <div class="edit-cost-group">
+                                <div class="edit-cost-amount">
+                                    <label class="edit-cost-sub-label" for="edit-service-cost">Amount</label>
+                                    <input type="number" id="edit-service-cost" value="${parseCostValue(h.serviceCost) > 0 ? parseCostValue(h.serviceCost) : ""}" min="0" step="0.01">
                                 </div>
-                                <div style="flex:0 0 auto;">
-                                    <label style="display:block;font-size:0.75em;font-weight:600;color:#6b7a8a;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Currency</label>
-                                    <select id="edit-service-currency" style="padding:0.3em 0.4em;border:1px solid #ccc;border-radius:4px;min-width:75px;">
+                                <div class="edit-cost-currency">
+                                    <label class="edit-cost-sub-label" for="edit-service-currency">Currency</label>
+                                    <select id="edit-service-currency">
                                         ${getServiceCurrencyOptionsHtml(h.serviceCurrency || asset.serviceCurrency)}
                                     </select>
                                 </div>
                             </div>
-                            <span style="font-size:0.75em;color:#888;margin-top:0.3em;display:block;font-style:italic;">No automatic conversion between currencies.</span>
+                            <span class="edit-cost-helper">No automatic currency conversion is performed.</span>
                         </div>
                         <button type="submit">Save</button>
                     </form>
