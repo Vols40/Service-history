@@ -1296,6 +1296,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // --- Edit History Event Modal ---
             function editHistoryEvent(asset, hidx) {
                 let editModal = document.createElement("div");
+                editModal.id = "edit-history-modal";
                 editModal.style.position = "fixed";
                 editModal.style.top = "0";
                 editModal.style.left = "0";
