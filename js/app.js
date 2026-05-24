@@ -2112,11 +2112,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         theme: "grid",
                         tableWidth: "auto",
                         columnStyles: {
-                            note: { cellWidth: 75, overflow: 'linebreak' },
-                            date: { cellWidth: 28 },
-                            operation: { cellWidth: 28 },
-                            label: { cellWidth: 24 },
-                            cost: { cellWidth: 24 }
+                            note: { cellWidth: 70, overflow: 'linebreak' },
+                            date: { cellWidth: 26 },
+                            operation: { cellWidth: 24 },
+                            label: { cellWidth: 20 },
+                            cost: { cellWidth: 28 }
                         }
                     });
                     doc.save(`${asset.name.replace(/\s+/g, "_")}_Service_History.pdf`);
@@ -2478,9 +2478,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <input type="number" id="service-cost" min="0" step="0.01" placeholder="e.g. 100.00">
             <label for="service-currency">Currency:</label>
             <select id="service-currency">
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="RON">RON</option>
+              ${getServiceCurrencyOptionsHtml(DEFAULT_SERVICE_CURRENCY)}
             </select>
           </div>
           <div class="form-section">
@@ -2653,7 +2651,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var technician = document.getElementById('technician').value.trim();
             var location = document.getElementById('location').value.trim();
             var serviceCost = document.getElementById('service-cost').value;
-            var serviceCurrency = (document.getElementById('service-currency').value || 'USD').toUpperCase();
+            var serviceCurrency = document.getElementById('service-currency').value;
             var notes = document.getElementById('service-notes').value.trim();
       
             var services = Array.prototype.slice.call(document.querySelectorAll('input[name="services"]:checked')).map(function(cb) { return cb.value; });
