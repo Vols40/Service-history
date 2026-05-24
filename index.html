@@ -8,6 +8,7 @@
         <link rel="icon" href="data:," />
         <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 
     </head>
 <body>
@@ -149,8 +150,7 @@
             <h3>Predictive Maintenance</h3>
             <p>Based on historical data, the following assets are likely to require maintenance soon:</p>
             <ul>
-                <li>Asset "Generator A" - Predicted Service Date: May 15th, 2025</li>
-                <li>Asset "Elevator 2" - Predicted Service Date: May 20th, 2025</li>
+                <li>No predicted maintenance due soon.</li>
             </ul>
         </div>
     </section>
@@ -177,25 +177,21 @@
     <!-- Reports Section (hidden by default) -->
     <div id="service-summary" class="report-section" style="display:none;">
         <h2>Service Summary</h2>
-        <p>Total Services Performed: 100</p>
-        <p>Overdue Services: 5</p>
-        <p>Upcoming Services: 10</p>
-        <p>Completed Services: 85</p>
+        <p>Total Services Performed: —</p>
+        <p>Overdue Services: —</p>
+        <p>Upcoming Services: —</p>
+        <p>Completed Services: —</p>
         <button class="print-button" onclick="printSection('service-summary')">Print Report</button>
     </div>
     <div id="asset-performance" class="report-section" style="display:none;">
         <h2>Asset Performance</h2>
-        <p>Average Service Interval: 30 days</p>
-        <p>Most Frequently Serviced Asset: "Generator A"</p>
+        <p>Average Service Interval: —</p>
+        <p>Most Frequently Serviced Asset: —</p>
         <button class="print-button" onclick="printSection('asset-performance')">Print Report</button>
     </div>
     <div id="service-history-log" class="report-section" style="display:none;">
         <h2>Service History Log</h2>
-        <ul>
-            <li>May 5th, 2025 - Completed service for "HVAC System"</li>
-            <li>May 3rd, 2025 - Completed service for "Elevator 2"</li>
-            <li>May 1st, 2025 - Service overdue for "Generator A"</li>
-        </ul>
+        <ul></ul>
         <button class="print-button" onclick="printSection('service-history-log')">Print Report</button>
     </div>
 
