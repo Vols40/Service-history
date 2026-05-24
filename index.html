@@ -118,10 +118,44 @@
 
     <!-- Reminder Notification Bar -->
     <section id="upcoming-reminders" class="upcoming-reminders">
-        <h3>Upcoming Service Reminders</h3>
-        <ul id="upcoming-reminders-list">
-          <!-- JS will fill this -->
-        </ul>
+        <h3>Service Reminders</h3>
+        <div class="reminder-summary-grid" id="reminder-summary-grid">
+            <article class="reminder-summary-card">
+                <span class="reminder-summary-label">Total Overdue</span>
+                <strong class="reminder-summary-value" id="reminder-overdue-total">0</strong>
+            </article>
+            <article class="reminder-summary-card">
+                <span class="reminder-summary-label">Due This Week</span>
+                <strong class="reminder-summary-value" id="reminder-due-week">0</strong>
+            </article>
+            <article class="reminder-summary-card">
+                <span class="reminder-summary-label">Due This Month</span>
+                <strong class="reminder-summary-value" id="reminder-due-month">0</strong>
+            </article>
+        </div>
+        <div class="reminder-groups">
+            <article class="reminder-group reminder-group-overdue">
+                <div class="reminder-group-header">
+                    <h4>Overdue</h4>
+                    <span class="reminder-group-badge rg-overdue" id="reminder-overdue-count">0</span>
+                </div>
+                <ul id="reminders-overdue-list" class="reminder-list"></ul>
+            </article>
+            <article class="reminder-group reminder-group-due-soon">
+                <div class="reminder-group-header">
+                    <h4>Due Soon</h4>
+                    <span class="reminder-group-badge rg-due-soon" id="reminder-due-soon-count">0</span>
+                </div>
+                <ul id="reminders-due-soon-list" class="reminder-list"></ul>
+            </article>
+            <article class="reminder-group reminder-group-upcoming">
+                <div class="reminder-group-header">
+                    <h4>Upcoming Later</h4>
+                    <span class="reminder-group-badge rg-upcoming-later" id="reminder-upcoming-later-count">0</span>
+                </div>
+                <ul id="reminders-upcoming-later-list" class="reminder-list"></ul>
+            </article>
+        </div>
       </section>
 
       <!--Recent Activities-->
