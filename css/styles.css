@@ -10,6 +10,8 @@
   --stat-item-min-width: 160px;
   --table-min-width: 640px;
   --table-min-width-mobile: 540px;
+  --quick-stat-card-bg: #fff8df;
+  --quick-stat-card-hover-bg: #f5ebc8;
 }
 
 body {
@@ -330,7 +332,7 @@ nav {
 .quick-stat-card {
   width: 100%;
   text-align: left;
-  background: #fff8df;
+  background: var(--quick-stat-card-bg);
   border: 1px solid #e6d7a9;
   border-radius: 8px;
   color: #3d3d3d;
@@ -338,7 +340,7 @@ nav {
 }
 
 .quick-stat-card:hover {
-  background: #f5ebc8;
+  background: var(--quick-stat-card-hover-bg);
 }
 
 .quick-stat-label {

@@ -105,13 +105,14 @@ document.addEventListener("DOMContentLoaded", function () {
             { value: "active", label: "Active" },
             { value: "out-of-service", label: "Out of Service" }
         ];
+        // Lightweight score scale used only for UI cues (0-100): healthy > due soon > overdue > out of service.
         const ASSET_HEALTH_SCORES = {
             healthy: 92,
             dueSoon: 68,
             attention: 35,
             outOfService: 20
         };
-        const ASSETS_MODAL_COLUMN_COUNT = 9;
+        const ASSETS_MODAL_COLUMNS = ["Name", "Type", "Status", "Health", "VIN", "Year", "Color", "Added", "Actions"];
         let activeAssetFilter = "all";
 
         function getAssetStatusInfo(asset, now = new Date()) {
@@ -253,7 +254,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             list.innerHTML = statCards.map(card => `
                 <li>
-                    <button type="button" class="quick-stat-card" data-dashboard-action="${card.action}"${card.assetName ? ` data-asset-name="${encodeURIComponent(card.assetName)}"` : ""}>
+                    <button type="button" class="quick-stat-card" data-dashboard-action="${card.action}"${card.assetName ? ` data-asset-name="${escapeHtml(card.assetName)}"` : ""}>
                         <span class="quick-stat-label">${card.label}</span>
                         <span class="quick-stat-value">${escapeHtml(String(card.value))}</span>
                         ${card.detail ? `<span class="quick-stat-detail">${escapeHtml(card.detail)}</span>` : ""}
@@ -295,9 +296,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
                 if (action === "open-most-serviced-asset") {
-                    const encodedAssetName = card.getAttribute("data-asset-name");
-                    const assetName = encodedAssetName ? decodeURIComponent(encodedAssetName) : "";
-                    if (!assetName || assetName === "-") {
+                    const assetName = card.getAttribute("data-asset-name") || "";
+                    if (!assetName) {
                         showFeedback("No serviced asset is available yet.", "info");
                         return;
                     }
@@ -305,6 +305,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     const targetAsset = assets.find(a => a.name === assetName);
                     if (targetAsset) {
                         showAssetDetailsAndHistory(targetAsset);
+                    } else {
+                        showFeedback("That asset is no longer available.", "info");
                     }
                 }
             });
@@ -931,6 +933,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const filteredAssets = assets
                 .map((asset, index) => ({ asset, index }))
                 .filter(({ asset }) => matchesAssetFilter(asset, activeAssetFilter));
+            const tableHeaderHtml = ASSETS_MODAL_COLUMNS.map(column => `<th>${column}</th>`).join("");
 
             const tableRows = filteredAssets.length
                 ? filteredAssets.map(({ asset, index }) => `
@@ -948,7 +951,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <button type="button" data-delete-asset="${index}" style="margin-left:0.5em;">Delete</button>
                             </td>
                         </tr>`).join("")
-                : `<tr><td colspan="${ASSETS_MODAL_COLUMN_COUNT}" class="empty-state-cell">No assets match this filter yet.</td></tr>`;
+                : `<tr><td colspan="${ASSETS_MODAL_COLUMNS.length}" class="empty-state-cell">No assets match this filter.</td></tr>`;
 
             const modalFilterChips = DASHBOARD_FILTER_CHIPS.map(chip => `
                 <button type="button" class="filter-chip${activeAssetFilter === chip.value ? " is-active" : ""}" data-asset-filter="${chip.value}">${chip.label}</button>
@@ -965,17 +968,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         <div style="max-height:60vh; overflow-y:auto;">
                             <table border="1" style="width:100%;border-collapse:collapse;">
                                 <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Type</th>
-                                        <th>Status</th>
-                                        <th>Health</th>
-                                        <th>VIN</th>
-                                        <th>Year</th>
-                                        <th>Color</th>
-                                        <th>Added</th>
-                                        <th>Actions</th>
-                                    </tr>
+                                    <tr>${tableHeaderHtml}</tr>
                                 </thead>
                                 <tbody>
                                     ${tableRows}
