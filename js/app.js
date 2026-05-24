@@ -2,7 +2,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Safe event delegation for all current and future links
         document.body.addEventListener("click", function (e) {
-            if (e.target.classList.contains("recent-activities-link")) {
+            const recentActivitiesLink = e.target.closest(".recent-activities-link");
+            if (recentActivitiesLink) {
                 e.preventDefault();
                 renderRecentActivities();
                 document.getElementById("recent-activities").style.display = "block";
@@ -11,35 +12,209 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
         //---Upcoming Reminders---
+        const REMINDER_PREFS_KEY = "serviceReminderPreferences";
+        const REMINDER_SNOOZE_DAYS = 3;
+        const REMINDER_MODAL_FOCUS_DELAY_MS = 100;
+        const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
+
+        function getReminderPreferences() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(REMINDER_PREFS_KEY) || "{}");
+                return parsed && typeof parsed === "object" ? parsed : {};
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function saveReminderPreferences(preferences) {
+            localStorage.setItem(REMINDER_PREFS_KEY, JSON.stringify(preferences || {}));
+        }
+
+        function formatReminderDateKey(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        function getReminderKey(asset) {
+            const dueDate = new Date(asset?.nextServiceDate || "");
+            return `${asset?.id || asset?.name || "asset"}::${formatReminderDateKey(dueDate)}`;
+        }
+
+        function isReminderSuppressed(reminder, now = new Date()) {
+            const preferences = getReminderPreferences();
+            const reminderPreference = preferences[getReminderKey(reminder)] || {};
+            if (reminderPreference.dismissed) return true;
+            if (reminderPreference.snoozeUntil) {
+                const snoozeUntil = new Date(reminderPreference.snoozeUntil);
+                return !isNaN(snoozeUntil.getTime()) && snoozeUntil > now;
+            }
+            return false;
+        }
+
+        function renderReminderGroupList(listId, reminders, emptyState) {
+            const list = document.getElementById(listId);
+            if (!list) return;
+            if (!reminders.length) {
+                list.innerHTML = `<li class="empty-state">${emptyState}</li>`;
+                return;
+            }
+            list.innerHTML = reminders.map(reminder => {
+                const assetId = escapeHtml(reminder.id || "");
+                return `
+                    <li class="reminder-item reminder-${reminder.category}">
+                        <div class="reminder-main">
+                            <div class="reminder-title-row">
+                                <strong>${escapeHtml(reminder.name || "Unnamed Asset")}</strong>
+                                <span class="reminder-urgency-pill urgency-${reminder.category}">${escapeHtml(reminder.urgencyText)}</span>
+                            </div>
+                            <div class="reminder-meta">
+                                <span>${escapeHtml(reminder.type || "Asset")}</span>
+                                <span>Due: ${escapeHtml(reminder.nextService.toLocaleDateString())}</span>
+                                <span>${escapeHtml(reminder.relativeLabel)}</span>
+                            </div>
+                        </div>
+                        <div class="reminder-actions">
+                            <button type="button" data-reminder-action="open-asset" data-reminder-asset-id="${assetId}">Open Asset</button>
+                            <button type="button" data-reminder-action="record-service" data-reminder-asset-id="${assetId}">Record Service</button>
+                            <button type="button" data-reminder-action="snooze" data-reminder-asset-id="${assetId}">Snooze ${REMINDER_SNOOZE_DAYS}d</button>
+                            <button type="button" data-reminder-action="dismiss" data-reminder-asset-id="${assetId}">Dismiss</button>
+                        </div>
+                    </li>
+                `;
+            }).join("");
+        }
+
+        function updateReminderCount(id, value) {
+            const element = document.getElementById(id);
+            if (element) element.textContent = String(value);
+        }
+
+        function focusAssetHistoryForm(asset) {
+            showAssetDetailsAndHistory(asset);
+            setTimeout(() => {
+                const modal = document.getElementById("asset-history-modal");
+                const noteInput = modal ? modal.querySelector("#history-note") : null;
+                if (noteInput) {
+                    noteInput.focus();
+                    noteInput.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            }, REMINDER_MODAL_FOCUS_DELAY_MS);
+        }
+
+        function getReminderRelativeLabel(nextService, today) {
+            const diffDays = Math.round((nextService - today) / MILLISECONDS_PER_DAY);
+            if (diffDays < 0) return `${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? "" : "s"} overdue`;
+            if (diffDays === 0) return "Due today";
+            if (diffDays === 1) return "Due tomorrow";
+            return `Due in ${diffDays} days`;
+        }
+
         function renderUpcomingReminders(daysAhead = 30) {
             const assets = getStoredAssets();
             const today = new Date();
-            const soon = new Date(today);
-            soon.setDate(today.getDate() + daysAhead);
+            today.setHours(0, 0, 0, 0);
+            const dueSoonLimit = new Date(today);
+            dueSoonLimit.setDate(today.getDate() + 7);
+            const monthLimit = new Date(today);
+            monthLimit.setDate(today.getDate() + daysAhead);
 
-            const upcoming = assets
-                .filter(a => a.nextServiceDate)
-                .map(a => ({
-                    ...a,
-                    nextService: new Date(a.nextServiceDate)
-                }))
-                .filter(a => a.nextService > today && a.nextService <= soon)
-                .sort((a, b) => a.nextService - b.nextService);
+            const now = new Date();
+            const reminderGroups = { overdue: [], dueSoon: [], upcomingLater: [] };
+            let dueThisMonthCount = 0;
 
-            const list = document.getElementById("upcoming-reminders-list");
-            if (!list) return;
+            assets.forEach(asset => {
+                if (!asset.nextServiceDate) return;
+                const nextService = new Date(asset.nextServiceDate);
+                if (isNaN(nextService.getTime())) return;
+                nextService.setHours(0, 0, 0, 0);
+                let category = "upcoming-later";
+                let urgencyText = "Upcoming";
+                if (nextService < today) {
+                    category = "overdue";
+                    urgencyText = "Overdue";
+                } else if (nextService <= dueSoonLimit) {
+                    category = "due-soon";
+                    urgencyText = "Due Soon";
+                }
+                const reminder = {
+                    ...asset,
+                    nextService,
+                    category,
+                    urgencyText,
+                    relativeLabel: getReminderRelativeLabel(nextService, today)
+                };
+                if (isReminderSuppressed(reminder, now)) return;
+                if (category !== "overdue" && nextService <= monthLimit) dueThisMonthCount++;
+                if (category === "overdue") reminderGroups.overdue.push(reminder);
+                else if (category === "due-soon") reminderGroups.dueSoon.push(reminder);
+                else reminderGroups.upcomingLater.push(reminder);
+            });
 
-            if (upcoming.length === 0) {
-                list.innerHTML = `<li class="empty-state">No upcoming services in the next ${daysAhead} days.</li>`;
-                return;
-            }
+            reminderGroups.overdue.sort((a, b) => a.nextService - b.nextService);
+            reminderGroups.dueSoon.sort((a, b) => a.nextService - b.nextService);
+            reminderGroups.upcomingLater.sort((a, b) => a.nextService - b.nextService);
 
-            list.innerHTML = upcoming.map(a => `<li>
-                <strong>${a.name}</strong> (${a.type || "Asset"})
-                – Due: <span style="color:#d2691e;">${a.nextService.toLocaleDateString()}</span>
-            </li>`
-            ).join("");
+            const overdue = reminderGroups.overdue;
+            const dueSoon = reminderGroups.dueSoon;
+            const upcomingLater = reminderGroups.upcomingLater;
+
+            updateReminderCount("reminder-overdue-total", overdue.length);
+            updateReminderCount("reminder-due-week", dueSoon.length);
+            updateReminderCount("reminder-due-month", dueThisMonthCount);
+            updateReminderCount("reminder-overdue-count", overdue.length);
+            updateReminderCount("reminder-due-soon-count", dueSoon.length);
+            updateReminderCount("reminder-upcoming-later-count", upcomingLater.length);
+
+            renderReminderGroupList("reminders-overdue-list", overdue, "No overdue reminders.");
+            renderReminderGroupList("reminders-due-soon-list", dueSoon, "No reminders due this week.");
+            renderReminderGroupList("reminders-upcoming-later-list", upcomingLater, "No upcoming reminders beyond this week.");
         }
+
+        const remindersSection = document.getElementById("upcoming-reminders");
+        if (remindersSection) {
+            remindersSection.addEventListener("click", (event) => {
+                const actionButton = event.target.closest("button[data-reminder-action]");
+                if (!actionButton) return;
+                const action = actionButton.getAttribute("data-reminder-action");
+                const assetId = actionButton.getAttribute("data-reminder-asset-id") || "";
+                if (!assetId) return;
+                const assets = getStoredAssets();
+                const asset = assets.find(item => String(item.id) === String(assetId));
+                if (!asset) {
+                    showFeedback("Asset no longer exists.", "info");
+                    renderUpcomingReminders();
+                    return;
+                }
+                if (action === "open-asset") {
+                    showAssetDetailsAndHistory(asset);
+                    return;
+                }
+                if (action === "record-service") {
+                    focusAssetHistoryForm(asset);
+                    return;
+                }
+                if (action === "dismiss") {
+                    const preferences = getReminderPreferences();
+                    preferences[getReminderKey(asset)] = { dismissed: true };
+                    saveReminderPreferences(preferences);
+                    showFeedback("Reminder dismissed locally.", "success");
+                    renderUpcomingReminders();
+                    return;
+                }
+                if (action === "snooze") {
+                    const snoozeUntil = new Date();
+                    snoozeUntil.setDate(snoozeUntil.getDate() + REMINDER_SNOOZE_DAYS);
+                    const preferences = getReminderPreferences();
+                    preferences[getReminderKey(asset)] = { snoozeUntil: snoozeUntil.toISOString() };
+                    saveReminderPreferences(preferences);
+                    showFeedback(`Reminder snoozed for ${REMINDER_SNOOZE_DAYS} days.`, "success");
+                    renderUpcomingReminders();
+                }
+            });
+        }
+
         renderUpcomingReminders();
 
         //---Recent Activities---

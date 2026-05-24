@@ -193,21 +193,190 @@ nav {
 /* Reminder Notification Bar Styling */
 
 .upcoming-reminders {
-  background: #f0e5b8;
-  border: 1px solid #fcda86;
-  border-radius: 8px;
+  background: #f8f2dc;
+  border: 1px solid #f2d186;
+  border-radius: 12px;
   padding: 1em 1.5em;
   margin-bottom: 2em;
 }
 .upcoming-reminders h3 {
   margin-top: 0;
+  margin-bottom: 0.8em;
 }
 .upcoming-reminders ul {
   list-style: none;
   padding-left: 0;
+  margin: 0;
 }
 .upcoming-reminders li {
   margin-bottom: 0.5em;
+}
+
+.reminder-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.reminder-summary-card {
+  background: #fffdf6;
+  border: 1px solid #f0ddb1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reminder-summary-label {
+  font-size: 0.78rem;
+  color: #5d6876;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.reminder-summary-value {
+  font-size: 1.3rem;
+  color: #1e3f5d;
+  line-height: 1.15;
+}
+
+.reminder-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.reminder-group {
+  background: #fffef9;
+  border: 1px solid #e6e3d5;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.reminder-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.reminder-group-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.reminder-group-badge {
+  display: inline-flex;
+  min-width: 26px;
+  justify-content: center;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.rg-overdue {
+  background: #ffe4e4;
+  color: #a23030;
+}
+
+.rg-due-soon {
+  background: #fff0d8;
+  color: #ad6a1b;
+}
+
+.rg-upcoming-later {
+  background: #e5f1ff;
+  color: #2e5a8d;
+}
+
+.reminder-list {
+  display: grid;
+  gap: 8px;
+}
+
+.reminder-item {
+  margin: 0;
+  border: 1px solid #e3e5ee;
+  border-left: 4px solid #6a8db4;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 9px 10px;
+}
+
+.reminder-overdue {
+  border-left-color: #c84b4b;
+  background: #fff8f8;
+}
+
+.reminder-due-soon {
+  border-left-color: #c8893c;
+  background: #fffbf5;
+}
+
+.reminder-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.reminder-urgency-pill {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.urgency-overdue {
+  background: #ffdede;
+  color: #912727;
+}
+
+.urgency-due-soon {
+  background: #ffe9cd;
+  color: #8b5b1b;
+}
+
+.urgency-upcoming-later {
+  background: #dcecff;
+  color: #254f86;
+}
+
+.reminder-meta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 0.82rem;
+  color: #526173;
+}
+
+.reminder-actions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reminder-actions button {
+  border: 1px solid #c4d2e3;
+  background: #ffffff;
+  color: #1d456a;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.reminder-actions button:hover {
+  background: #eff5ff;
 }
 
 /*Recent Activity Section */
@@ -930,6 +1099,18 @@ table td {
     font-size: 1.25rem;
   }
 
+  .upcoming-reminders {
+    padding: 0.9em;
+  }
+
+  .reminder-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reminder-actions button {
+    flex: 1 1 calc(50% - 6px);
+  }
+
   .recent-activities {
     top: 6%;
     padding: 1em;
@@ -1421,6 +1602,64 @@ body.dark-mode {
 
 .dark-mode .activity-icon {
   background: #2a3d50;
+}
+
+.dark-mode .reminder-summary-card,
+.dark-mode .reminder-group {
+  background: #1b2733;
+  border-color: #314455;
+}
+
+.dark-mode .reminder-summary-label,
+.dark-mode .reminder-meta {
+  color: #9bb2c8;
+}
+
+.dark-mode .reminder-summary-value {
+  color: #d9e8f6;
+}
+
+.dark-mode .reminder-item {
+  background: #202e3a;
+  border-color: #314758;
+}
+
+.dark-mode .reminder-overdue {
+  background: #35252a;
+  border-left-color: #d46a6a;
+}
+
+.dark-mode .reminder-due-soon {
+  background: #362d22;
+  border-left-color: #cf9f62;
+}
+
+.dark-mode .rg-overdue,
+.dark-mode .urgency-overdue {
+  background: #5d2c2f;
+  color: #ffc9c9;
+}
+
+.dark-mode .rg-due-soon,
+.dark-mode .urgency-due-soon {
+  background: #5f4527;
+  color: #ffddb0;
+}
+
+.dark-mode .rg-upcoming-later,
+.dark-mode .urgency-upcoming-later {
+  background: #253e5a;
+  color: #bedfff;
+}
+
+.dark-mode .reminder-actions button {
+  background: #1a2733;
+  border-color: #35506a;
+  color: #c9ddf1;
+}
+
+.dark-mode .reminder-actions button:hover {
+  background: #223545;
 }
 
 .dark-mode .activity-asset {
