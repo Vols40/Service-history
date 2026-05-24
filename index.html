@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Service History App</title>
+        <link rel="stylesheet" href="css/styles.css">
+        <link rel="icon" href="data:," />
+        <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.js"></script>
+
+    </head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <div class="header-container">
+            <h1 class="app-title">Service History</h1>
+            <div class="header-actions">
+        
+        <!-- Dark Mode Toggle -->
+        <button id="dark-mode-toggle" class="dark-mode-toggle">🌙 Dark Mode</button>
+
+        <!-- Language Selector -->
+        <select id="language-selector" aria-label="Language Selector">
+            <option value="en" selected>English</option>
+            <option value="ro">Română</option>
+        </select>
+        <div class="profile-icon">
+            <img src="images/logo.PNG" alt="Profile Icon" width="100px">
+        </div>
+            </div>
+        </div>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="#home-section">Home</a></li>
+                <li class="dropdown">
+
+                    <a href="#">Assets</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#quick-statistics">Quick Statistics</a></li>
+                        <li><a href="#" class="recent-activities-link">Recent Activities</a>
+                        <li><a href="#upcoming-reminders">Upcoming Service Reminders</a></li>
+
+                        <!-- Removed reports links from here -->
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="#">Reports</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#service-summary">Service Summary</a></li>
+                        <li><a href="#asset-performance">Asset Performance</a></li>
+                        <li><a href="#service-history-log">Service History Log</a></li>
+                        <li class="dropdown-submenu">
+                            <a href="#">Import</a>
+                            <ul class="dropdown-submenu-items">
+                                <li>
+                                    <label for="import-json" class="import-button">Import JSON</label>
+                                    <input type="file" id="import-json" style="display: none;" />
+                                </li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="#">Export</a>
+                            <ul class="dropdown-submenu-items">
+                                <li><button id="export-json">Export JSON</button></li>
+                                <li><button id="export-csv">Export CSV</button></li>
+                                <li><button id="export-pdf">Export PDF</button></li>
+                                <li>
+                                    <button id="upload-to-dropbox">Upload to Dropbox</button>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="#">Settings</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#profile-settings">Profile Settings</a></li>
+                        <li><a href="#notification-preferences">Notification Preferences</a></li>
+                        <li><a href="#theme-appearance">Theme and Appearance</a></li>
+                        <li><a href="#data-management">Data Management</a></li>
+                        <li><a href="#access-management">Access Management</a></li>
+                        <li><a href="#integration-settings">Integration Settings</a></li>
+                        <li><a href="#api-keys">API Keys</a></li>
+                        <li><a href="#application-settings">Application Settings</a></li>
+                        <li><a href="#help-support">Help and Support</a></li>
+                        <li><a href="#audit-logs">Audit Logs</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Home Section -->
+    <section class="home-page" id="home-section">
+        <div class="welcome-section">
+            <h2>Welcome Back, Vols40!</h2>
+            <p>Your Service History Dashboard</p>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <h3>Quick Actions</h3>
+            <div class="action-buttons">
+                <button id="add-new-asset">Add New Asset</button>
+                <button id="view-all-assets">View All Assets</button>
+            </div>
+        </div>
+
+        <!-- Global Search -->
+        <div class="global-search">
+            <input type="text" id="global-search-bar" placeholder="Search assets, reports, or settings...">
+            <button id="global-search-button">Search</button>
+        </div>
+    </section>
+
+    <!-- Reminder Notification Bar -->
+    <section id="upcoming-reminders" class="upcoming-reminders">
+        <h3>Upcoming Service Reminders</h3>
+        <ul id="upcoming-reminders-list">
+          <!-- JS will fill this -->
+        </ul>
+      </section>
+
+      <!--Recent Activities-->
+      <a href="#" class="recent-activities-link" style="display: none;">Recent Activities</a>
+
+      <section id="recent-activities" class="recent-activities" style="display:none;">
+        <h3>Recent Activities</h3>
+        <ul id="recent-activities-list"></ul>
+        <button onclick="document.getElementById('recent-activities').style.display='none';">Close</button>
+      </section>
+
+      <!-- Quick Statistics Section -->
+      <section id="quick-statistics" class="quick-statistics">
+        <h3>Quick Statistics</h3>
+        <ul id="quick-statistics-list"></ul>
+      </section>
+
+    <!-- Analytics Section -->
+    <section class="analytics-page" id="analytics-section">
+        <h2>Analytics and Insights</h2>
+        <div class="data-visualization">
+            <h3>Service Trends</h3>
+            <div id="service-trends-chart" class="chart-placeholder">[Chart Placeholder]</div>
+        </div>
+        <div class="predictive-maintenance">
+            <h3>Predictive Maintenance</h3>
+            <p>Based on historical data, the following assets are likely to require maintenance soon:</p>
+            <ul>
+                <li>Asset "Generator A" - Predicted Service Date: May 15th, 2025</li>
+                <li>Asset "Elevator 2" - Predicted Service Date: May 20th, 2025</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Collaboration Section -->
+    <section class="collaboration-page" id="collaboration-section">
+        <h2>Team Collaboration</h2>
+        <div class="team-roles">
+            <h3>Manage Team Roles</h3>
+            <ul>
+                <li>Admin: Full access to all features.</li>
+                <li>Technician: Can view and update assets and reports.</li>
+                <li>Viewer: Read-only access.</li>
+            </ul>
+        </div>
+        <div class="comments-and-notes">
+            <h3>Comments and Notes</h3>
+            <p>Add comments or notes for specific assets or reports:</p>
+            <textarea id="comments-box" placeholder="Write your comment here..."></textarea>
+            <button id="add-comment-button">Add Comment</button>
+        </div>
+    </section>
+
+    <!-- Reports Section (hidden by default) -->
+    <div id="service-summary" class="report-section" style="display:none;">
+        <h2>Service Summary</h2>
+        <p>Total Services Performed: 100</p>
+        <p>Overdue Services: 5</p>
+        <p>Upcoming Services: 10</p>
+        <p>Completed Services: 85</p>
+        <button class="print-button" onclick="printSection('service-summary')">Print Report</button>
+    </div>
+    <div id="asset-performance" class="report-section" style="display:none;">
+        <h2>Asset Performance</h2>
+        <p>Average Service Interval: 30 days</p>
+        <p>Most Frequently Serviced Asset: "Generator A"</p>
+        <button class="print-button" onclick="printSection('asset-performance')">Print Report</button>
+    </div>
+    <div id="service-history-log" class="report-section" style="display:none;">
+        <h2>Service History Log</h2>
+        <ul>
+            <li>May 5th, 2025 - Completed service for "HVAC System"</li>
+            <li>May 3rd, 2025 - Completed service for "Elevator 2"</li>
+            <li>May 1st, 2025 - Service overdue for "Generator A"</li>
+        </ul>
+        <button class="print-button" onclick="printSection('service-history-log')">Print Report</button>
+    </div>
+
+    <!-- Accessibility Section -->
+    <section id="accessibility-settings" class="settings-section">
+        <h2>Accessibility Settings</h2>
+        <div>
+            <label for="high-contrast-toggle">High Contrast Mode:</label>
+            <input type="checkbox" id="high-contrast-toggle">
+        </div>
+    </section>
+
+    <!-- Audit Logs Section -->
+    <section id="audit-logs" class="settings-section">
+        <h2>Audit Logs</h2>
+        <p>Track user actions for compliance and monitoring:</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Action</th>
+                    <th>User</th>
+                    <th>Timestamp</th>
+                    <th>IP Address</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Logged In</td>
+                    <td>Vols40</td>
+                    <td>2025-05-07 08:00:00</td>
+                    <td>192.168.1.1</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+    
+    <!-- Floating Action Button -->
+    <button class="fab" id="fab">+</button>
+    
+    <!-- Footer Section -->
+    <footer>
+        <p>&copy; 2025 Service History App. All rights reserved.</p>
+    </footer> 
+    <script src="js/app.js"></script>
+</body>
+</html>

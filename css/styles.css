@@ -1,0 +1,388 @@
+/* General Reset and Box Sizing */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  line-height: 1.6;
+  background-color: #f9f9f9;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+/* Header Styling */
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #0078d4;
+  color: white;
+  padding: 15px 20px;
+}
+
+.app-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.dark-mode-toggle {
+  background-color: #005a9e;
+  border: none;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.dark-mode-toggle:hover {
+  background-color: #003f6f;
+}
+
+.language-selector {
+  font-size: 0.9rem;
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+/* Navigation Menu Styling */
+nav {
+  background-color: #005a9e;
+  color: white;
+}
+
+.nav-links {
+  display: flex;
+  justify-content: space-around; /* Spread out the links evenly */
+  list-style: none;
+  padding: 10px 20px;
+  margin: 0;
+}
+
+.nav-links li {
+  margin: 0; /* Removed extra margin to balance spacing */
+  position: relative;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: white;
+  font-weight: bold;
+  padding: 5px 15px; /* Added more padding for clickable area */
+  border-radius: 5px;
+}
+
+.nav-links a:hover {
+  background-color: #0078d4;
+}
+.dropdown {
+  position: relative; /* Ensure the dropdown menu is positioned relative to the parent nav item */
+}
+
+
+.dropdown-menu {
+  display: none;
+  position: absolute; 
+  top: 100%; 
+  left: 50%; 
+  transform: translateX(-50%); 
+  background-color: #005a9e;
+  padding: 10px;
+  margin-top: 5px;
+  border-radius: 5px;
+  z-index: 10;
+  min-width: 200px; 
+  white-space: nowrap;
+}
+
+.dropdown-menu li {
+  margin: 5px 0;
+}
+.dropdown:hover .dropdown-menu {
+  display: block;
+}
+
+.dropdown-menu a {
+  display: block;
+  text-decoration: none;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+.dropdown-menu a:hover {
+  background-color: #0078d4;
+}
+
+/* Reminder Notification Bar Styling */
+
+.upcoming-reminders {
+  background: #f0e5b8;
+  border: 1px solid #fcda86;
+  border-radius: 8px;
+  padding: 1em 1.5em;
+  margin-bottom: 2em;
+}
+.upcoming-reminders h3 {
+  margin-top: 0;
+}
+.upcoming-reminders ul {
+  list-style: none;
+  padding-left: 0;
+}
+.upcoming-reminders li {
+  margin-bottom: 0.5em;
+}
+
+/*Recent Activity Section */
+.recent-activities {
+  position: fixed;
+  top: 10%;
+  left: 50%;
+  transform: translate(-50%, 0);
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 1.5em 2em;
+  z-index: 1002;
+  min-width: 320px;
+  max-width: 95vw;
+  box-shadow: 0 8px 42px rgba(0,0,0,0.12);
+}
+.recent-activities ul {
+  list-style: none;
+  padding-left: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.recent-activities li {
+  margin-bottom: 0.8em;
+  font-size: 1em;
+  line-height: 1.2;
+}
+
+/*Quick Statistics Section */
+.quick-statistics {
+  background: #f0e5b8;
+  border: 1px solid #fcda86;
+  border-radius: 8px;
+  padding: 1em 1.5em;
+  margin-bottom: 2em;
+}
+.quick-statistics h3 {
+  margin-top: 0;
+}
+.quick-statistics ul {
+  list-style: none;
+  padding-left: 0;
+}
+.quick-statistics li {
+  margin-bottom: 0.5em;
+  font-size: 1.05em;
+}
+
+/* Sections */
+
+section {
+  padding: 20px;
+  margin: 10px auto;
+  max-width: 1200px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+  color: #005a9e;
+  margin-bottom: 10px;
+}
+
+h3 {
+  color: #333;
+  margin-bottom: 8px;
+}
+
+/* Buttons */
+button {
+  background-color: #0078d4;
+  color: white;
+  border:none;
+  margin-bottom: 2px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #005a9e;
+}
+
+.print-button {
+  background-color: #28a745;
+  margin-top: 10px;
+}
+
+.print-button:hover {
+  background-color: #1c7c33;
+}
+
+/* Search Bar and Filters */
+#search-bar,
+#global-search-bar {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.filters label {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #555;
+}
+
+.filters input,
+.filters select {
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+/* Quick Actions */
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+/* Assets Section */
+.stats-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.stat-item {
+  flex: 1;
+  background-color: #f1f1f1;
+  padding: 10px;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.stat-item h3 {
+  font-size: 1rem;
+  color: #005a9e;
+  margin-bottom: 5px;
+}
+
+/* Comments Section */
+.comments-and-notes textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.comments-and-notes button {
+  margin-top: 10px;
+  display: inline-block;
+}
+
+/* Accessibility Settings */
+#accessibility-settings {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Floating Action Button */
+.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #0078d4;
+  color: white;
+  border: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  text-align: center;
+  line-height: 35px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.fab:hover {
+  background-color: #005a9e;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 10px;
+  background-color: #005a9e;
+  color: white;
+  margin-top: 20px;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Base styles for dark mode */
+body.dark-mode {
+  background-color: #121212; 
+  color: #161212;           
+}
+
+.dark-mode header {
+  background-color: #1e1e1e;
+}
+
+.dark-mode .dropdown-menu {
+  background-color: #2c2c2c;
+  color: #ffffff;
+}
+
+.dark-mode .dropdown-menu a {
+  color: #ffffff;
+}
+
+.dark-mode .dropdown-menu a:hover {
+  background-color: #444444;
+}
+
+.dark-mode button {
+  background-color: #333333;
+  color: #ffffff;
+  border: 1px solid #444444;
+}
+
+.dark-mode button:hover {
+  background-color: #444444;
+}
