@@ -98,54 +98,127 @@ document.addEventListener("DOMContentLoaded", function () {
             ).join("");
         }
 
+        const DASHBOARD_FILTER_CHIPS = [
+            { value: "all", label: "All" },
+            { value: "overdue", label: "Overdue" },
+            { value: "due-soon", label: "Due Soon" },
+            { value: "active", label: "Active" },
+            { value: "out-of-service", label: "Out of Service" }
+        ];
+        let activeAssetFilter = "all";
+
+        function getAssetStatusInfo(asset, now = new Date()) {
+            const statusText = (asset.status || "Active").trim();
+            const statusLower = statusText.toLowerCase();
+            const today = new Date(now);
+            today.setHours(0, 0, 0, 0);
+            const nextServiceDate = asset.nextServiceDate ? new Date(asset.nextServiceDate) : null;
+            if (nextServiceDate && !isNaN(nextServiceDate.getTime())) {
+                nextServiceDate.setHours(0, 0, 0, 0);
+            }
+            const hasNextServiceDate = nextServiceDate && !isNaN(nextServiceDate.getTime());
+            const dueSoonLimit = new Date(today);
+            dueSoonLimit.setDate(dueSoonLimit.getDate() + 30);
+
+            const isOutOfService = ["inactive", "out of service", "out-of-service"].includes(statusLower);
+            const isOverdue = hasNextServiceDate && nextServiceDate < today;
+            const isDueSoon = hasNextServiceDate && nextServiceDate >= today && nextServiceDate <= dueSoonLimit;
+
+            let healthLabel = "Healthy";
+            let healthTone = "good";
+            let healthScore = 92;
+
+            if (isOutOfService) {
+                healthLabel = "Out of Service";
+                healthTone = "bad";
+                healthScore = 20;
+            } else if (isOverdue) {
+                healthLabel = "Attention";
+                healthTone = "bad";
+                healthScore = 35;
+            } else if (isDueSoon) {
+                healthLabel = "Due Soon";
+                healthTone = "warn";
+                healthScore = 68;
+            }
+
+            return { statusText, statusLower, isOutOfService, isOverdue, isDueSoon, healthLabel, healthTone, healthScore };
+        }
+
+        function getStatusBadgeClass(statusText) {
+            const normalized = (statusText || "").toLowerCase();
+            if (normalized === "active") return "status-good";
+            if (["inactive", "out of service", "out-of-service"].includes(normalized)) return "status-bad";
+            return "status-neutral";
+        }
+
+        function renderStatusBadge(statusText) {
+            const safeStatus = escapeHtml(statusText || "—");
+            return `<span class="status-badge ${getStatusBadgeClass(statusText)}">${safeStatus}</span>`;
+        }
+
+        function renderHealthIndicator(asset) {
+            const info = getAssetStatusInfo(asset);
+            return `<span class="health-indicator health-${info.healthTone}" title="Asset health score">${info.healthLabel} (${info.healthScore})</span>`;
+        }
+
+        function matchesAssetFilter(asset, filter) {
+            const info = getAssetStatusInfo(asset);
+            switch (filter) {
+                case "overdue":
+                    return info.isOverdue;
+                case "due-soon":
+                    return info.isDueSoon;
+                case "active":
+                    return info.statusLower === "active";
+                case "out-of-service":
+                    return info.isOutOfService;
+                case "all":
+                default:
+                    return true;
+            }
+        }
+
+        function renderDashboardQuickFilters() {
+            const container = document.getElementById("dashboard-quick-filters");
+            if (!container) return;
+            container.innerHTML = DASHBOARD_FILTER_CHIPS.map(chip => `
+                <button type="button" class="filter-chip${activeAssetFilter === chip.value ? " is-active" : ""}" data-dashboard-filter="${chip.value}">
+                    ${chip.label}
+                </button>
+            `).join("");
+        }
+
+        function focusAssetView(filter) {
+            activeAssetFilter = filter || "all";
+            renderDashboardQuickFilters();
+            renderAssetsModal(activeAssetFilter);
+        }
+
         //---Quick Statistics---
         function renderQuickStatistics() {
             const assets = getStoredAssets();
-            const today = new Date();
-            const thisMonth = today.getMonth();
-            const thisYear = today.getFullYear();
-
-            // 1. Total Assets
-            let totalAssets = assets.length;
-
-            // 2. Total Services Performed This Month
-            let totalServicesMonth = 0;
-
-            // 3. Overdue Services: With how many days overdue
-            let overdueServices = [];
-
-            // 4. Most Serviced Asset
-            let serviceCounts = {};
+            const now = new Date();
+            let completedServices = 0;
+            let overdueServices = 0;
+            let upcomingServices = 0;
+            const serviceCounts = {};
 
             assets.forEach(asset => {
-                // Count services performed in this month
+                const statusInfo = getAssetStatusInfo(asset, now);
+                if (statusInfo.isOverdue) overdueServices++;
+                if (statusInfo.isDueSoon) upcomingServices++;
+
                 (asset.history || []).forEach(ev => {
                     if (["service", "maintenance", "repair", "parts change"].includes((ev.operation || ev.type || "").toLowerCase())) {
-                        const d = new Date(ev.date);
-                        if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
-                            totalServicesMonth++;
-                        }
-                        // Count for "most serviced"
                         serviceCounts[asset.name] = (serviceCounts[asset.name] || 0) + 1;
+                        if (ev.note && ev.note.toLowerCase().includes("completed")) {
+                            completedServices++;
+                        }
                     }
                 });
-
-                // Check for overdue services
-                if (asset.nextServiceDate) {
-                    const nextService = new Date(asset.nextServiceDate);
-                    if (nextService < today) {
-                        // Calculate how many days overdue
-                        const diffDays = Math.floor((today - nextService) / (1000 * 60 * 60 * 24));
-                        overdueServices.push({
-                            name: asset.name,
-                            days: diffDays,
-                            dueDate: nextService
-                        });
-                    }
-                }
             });
 
-            // Most serviced asset
             let mostServicedAsset = "";
             let mostServicedCount = 0;
             Object.entries(serviceCounts).forEach(([name, count]) => {
@@ -155,29 +228,79 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
 
-            // Format overdue services detail
-            let overdueText;
-            if (overdueServices.length === 0) {
-                overdueText = `Overdue Services: <b>0</b>`;
-            } else {
-                overdueText = `Overdue Services: <b>${overdueServices.length}</b><br>`;
-                overdueText += overdueServices.map(s => `<span style="font-size:0.97em;color:#c00;">${s.name} (${s.days} day${s.days === 1 ? '' : 's'} overdue)</span>`
-                ).join("<br>");
-            }
-
-            // Final stats (first, second, third, last)
-            const stats = [
-                `Total Assets: <b>${totalAssets}</b>`,
-                `Total Services Performed This Month: <b>${totalServicesMonth}</b>`,
-                overdueText,
-                `Most Serviced Asset: <b>${mostServicedAsset || "-"}</b> (${mostServicedCount})`
+            const statCards = [
+                { label: "Total Assets", value: assets.length, action: "open-all-assets" },
+                { label: "Overdue Services", value: overdueServices, action: "open-overdue-assets" },
+                { label: "Upcoming Services", value: upcomingServices, action: "open-due-soon-assets" },
+                { label: "Completed Services", value: completedServices, action: "open-service-summary" },
+                { label: "Most Serviced Asset", value: mostServicedAsset || "-", detail: mostServicedCount ? `${mostServicedCount} events` : "No service events yet", action: "open-most-serviced-asset", assetName: mostServicedAsset || "" }
             ];
-            if (totalAssets === 0) {
-                stats.unshift(`<span class="empty-state">Add your first asset to start building statistics.</span>`);
-            }
 
             const list = document.getElementById("quick-statistics-list");
-            if (list) list.innerHTML = stats.map(s => `<li>${s}</li>`).join("");
+            if (!list) return;
+            if (assets.length === 0) {
+                list.innerHTML = `<li><span class="empty-state">Add your first asset to start building statistics.</span></li>`;
+                renderDashboardQuickFilters();
+                return;
+            }
+
+            list.innerHTML = statCards.map(card => `
+                <li>
+                    <button type="button" class="quick-stat-card" data-dashboard-action="${card.action}"${card.assetName ? ` data-asset-name="${encodeURIComponent(card.assetName)}"` : ""}>
+                        <span class="quick-stat-label">${card.label}</span>
+                        <span class="quick-stat-value">${escapeHtml(String(card.value))}</span>
+                        ${card.detail ? `<span class="quick-stat-detail">${escapeHtml(card.detail)}</span>` : ""}
+                    </button>
+                </li>
+            `).join("");
+            renderDashboardQuickFilters();
+        }
+
+        const dashboardQuickFilters = document.getElementById("dashboard-quick-filters");
+        if (dashboardQuickFilters) {
+            dashboardQuickFilters.addEventListener("click", (event) => {
+                const chip = event.target.closest("button[data-dashboard-filter]");
+                if (!chip) return;
+                focusAssetView(chip.getAttribute("data-dashboard-filter"));
+            });
+        }
+
+        const quickStatisticsList = document.getElementById("quick-statistics-list");
+        if (quickStatisticsList) {
+            quickStatisticsList.addEventListener("click", (event) => {
+                const card = event.target.closest("button[data-dashboard-action]");
+                if (!card) return;
+                const action = card.getAttribute("data-dashboard-action");
+                if (action === "open-all-assets") {
+                    focusAssetView("all");
+                    return;
+                }
+                if (action === "open-overdue-assets") {
+                    focusAssetView("overdue");
+                    return;
+                }
+                if (action === "open-due-soon-assets") {
+                    focusAssetView("due-soon");
+                    return;
+                }
+                if (action === "open-service-summary") {
+                    showReportSection("service-summary");
+                    return;
+                }
+                if (action === "open-most-serviced-asset") {
+                    const encodedAssetName = card.getAttribute("data-asset-name");
+                    const assetName = encodedAssetName ? decodeURIComponent(encodedAssetName) : "";
+                    if (!assetName || assetName === "-") {
+                        showFeedback("No serviced asset is available yet.", "info");
+                        return;
+                    }
+                    const assets = getStoredAssets();
+                    const targetAsset = assets.find(a => a.name === assetName);
+                    if (targetAsset) {
+                        showAssetDetailsAndHistory(targetAsset);
+                    }
+                }
+            });
         }
 
         renderQuickStatistics();
@@ -715,6 +838,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <select id="asset-status" name="asset-status" required style="width:100%">
                                     <option value="Active">Active</option>
                                     <option value="Inactive">Inactive</option>
+                                    <option value="Out of Service">Out of Service</option>
                                 </select>
                             </div>
                             <div style="margin-bottom:1em;">
@@ -775,7 +899,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // --- View All Assets ---
         const viewAllAssetsBtn = document.getElementById("view-all-assets");
-        function renderAssetsModal() {
+        function renderAssetsModal(filter = activeAssetFilter) {
             let modal = document.getElementById("view-assets-modal");
             if (!modal) {
                 modal = document.createElement("div");
@@ -794,13 +918,20 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.body.appendChild(modal);
             }
 
+            activeAssetFilter = filter || "all";
+            renderDashboardQuickFilters();
             const assets = getStoredAssets();
-            const tableRows = assets.length
-                ? assets.map((asset, index) => `
+            const filteredAssets = assets
+                .map((asset, index) => ({ asset, index }))
+                .filter(({ asset }) => matchesAssetFilter(asset, activeAssetFilter));
+
+            const tableRows = filteredAssets.length
+                ? filteredAssets.map(({ asset, index }) => `
                         <tr>
                             <td>${escapeHtml(asset.name || "—")}</td>
                             <td>${escapeHtml(asset.type || "—")}</td>
-                            <td>${escapeHtml(asset.status || "—")}</td>
+                            <td>${renderStatusBadge(asset.status || "—")}</td>
+                            <td>${renderHealthIndicator(asset)}</td>
                             <td>${escapeHtml(asset.vin || "—")}</td>
                             <td>${escapeHtml(asset.year || "—")}</td>
                             <td>${escapeHtml(asset.color || "—")}</td>
@@ -810,12 +941,20 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <button type="button" data-delete-asset="${index}" style="margin-left:0.5em;">Delete</button>
                             </td>
                         </tr>`).join("")
-                : `<tr><td colspan="8" class="empty-state-cell">No assets available yet.</td></tr>`;
+                : `<tr><td colspan="9" class="empty-state-cell">No assets match this filter yet.</td></tr>`;
+
+            const modalFilterChips = DASHBOARD_FILTER_CHIPS.map(chip => `
+                <button type="button" class="filter-chip${activeAssetFilter === chip.value ? " is-active" : ""}" data-asset-filter="${chip.value}">${chip.label}</button>
+            `).join("");
 
             modal.innerHTML = `
                     <div style="background: #fff; padding: 2em; border-radius: 8px; max-width: 900px; width: 100%; position:relative">
                         <button id="close-assets-modal" style="position:absolute;top:1em;right:1em;font-size:1.2em;">&times;</button>
                         <h2>All Assets</h2>
+                        <div class="asset-filter-chips">
+                            ${modalFilterChips}
+                        </div>
+                        <div class="asset-filter-summary">Showing ${filteredAssets.length} of ${assets.length} assets</div>
                         <div style="max-height:60vh; overflow-y:auto;">
                             <table border="1" style="width:100%;border-collapse:collapse;">
                                 <thead>
@@ -823,6 +962,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                         <th>Name</th>
                                         <th>Type</th>
                                         <th>Status</th>
+                                        <th>Health</th>
                                         <th>VIN</th>
                                         <th>Year</th>
                                         <th>Color</th>
@@ -839,6 +979,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 `;
 
             modal.querySelector("#close-assets-modal").addEventListener("click", () => modal.remove());
+            modal.querySelectorAll("button[data-asset-filter]").forEach(btn => {
+                btn.addEventListener("click", () => renderAssetsModal(btn.getAttribute("data-asset-filter")));
+            });
             modal.querySelectorAll("button[data-edit-asset]").forEach(btn => {
                 btn.addEventListener("click", () => openEditAssetModal(parseInt(btn.getAttribute("data-edit-asset"), 10)));
             });
@@ -859,7 +1002,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (editModal) editModal.remove();
 
             const currentStatus = asset.status || "Active";
-            const statusOptions = Array.from(new Set([currentStatus, "Active", "Inactive"]));
+            const statusOptions = Array.from(new Set([currentStatus, "Active", "Inactive", "Out of Service"]));
             editModal = document.createElement("div");
             editModal.id = "edit-asset-modal";
             editModal.style.position = "fixed";
@@ -985,7 +1128,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (viewAllAssetsBtn) {
-            viewAllAssetsBtn.addEventListener("click", renderAssetsModal);
+            viewAllAssetsBtn.addEventListener("click", () => renderAssetsModal("all"));
         }
 
 
