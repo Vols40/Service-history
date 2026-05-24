@@ -1677,6 +1677,10 @@ document.addEventListener("DOMContentLoaded", function () {
         </form>
         <div class="success-message" id="success-message" style="display:none;">Asset and service info saved!</div>
         <script>
+          // Note: generateId and normalizeAsset are defined here as local copies because
+          // this script runs in a separate browser window (new tab) opened via window.open()
+          // and cannot access the parent page's scope. Any logic changes must be kept in sync
+          // with the identical functions in the main js/app.js file.
           function generateId() {
             return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
           }
@@ -1857,7 +1861,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 assets.push(asset);
               }
-              localStorage.setItem("assets", JSON.stringify(assets));
+              localStorage.setItem("assets", JSON.stringify(assets.map(function(a) { return normalizeAsset(a) || a; })));
               document.getElementById('success-message').style.display = 'block';
               setTimeout(function(){ window.close(); }, 1300);
             }
