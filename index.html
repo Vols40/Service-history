@@ -144,8 +144,26 @@
     <section class="analytics-page" id="analytics-section">
         <h2>Analytics &amp; Insights</h2>
         <div class="data-visualization">
-            <h3>Service Trends</h3>
-            <div id="service-trends-chart" class="chart-placeholder">No service trend data available yet.</div>
+            <h3>Service Analytics</h3>
+            <div class="analytics-chart-grid">
+                <div class="analytics-chart-card">
+                    <h4>Service Trends</h4>
+                    <div id="service-trends-chart" class="chart-placeholder">No service trend data available yet.</div>
+                </div>
+                <div class="analytics-chart-card">
+                    <h4>Assets by Status</h4>
+                    <div id="status-distribution-chart" class="chart-placeholder">Status distribution will appear here.</div>
+                </div>
+                <div class="analytics-chart-card">
+                    <h4>Overdue vs Due Soon</h4>
+                    <div id="due-overview-chart" class="chart-placeholder">Service due-state overview will appear here.</div>
+                </div>
+                <div class="analytics-chart-card">
+                    <h4>Service Cost Trend</h4>
+                    <div id="service-cost-chart" class="chart-placeholder">Service cost trend will appear here.</div>
+                </div>
+            </div>
+            <div id="service-cost-insights" class="service-cost-insights"></div>
         </div>
         <div class="predictive-maintenance">
             <h3>Predictive Maintenance</h3>
@@ -182,6 +200,8 @@
         <p>Overdue Services: —</p>
         <p>Upcoming Services: —</p>
         <p>Completed Services: —</p>
+        <p>Total Service Spend: —</p>
+        <p>Highest Service Spend Asset: —</p>
         <button class="print-button" onclick="printSection('service-summary')">Print Report</button>
     </div>
     <div id="asset-performance" class="report-section" style="display:none;">
