@@ -5,6 +5,13 @@
   box-sizing: border-box;
 }
 
+:root {
+  --profile-icon-size: 56px;
+  --stat-item-min-width: 160px;
+  --table-min-width: 640px;
+  --table-min-width-mobile: 540px;
+}
+
 body {
   font-family: 'Arial', sans-serif;
   line-height: 1.6;
@@ -68,7 +75,7 @@ body {
 }
 
 .profile-icon img {
-  width: 56px;
+  width: var(--profile-icon-size);
   max-width: 100%;
   height: auto;
   border-radius: 6px;
@@ -342,7 +349,7 @@ button {
   padding: 14px;
   border-radius: 8px;
   text-align: center;
-  min-width: 160px;
+  min-width: var(--stat-item-min-width);
   border: 1px solid #e0e0e0;
 }
 
@@ -412,7 +419,7 @@ table td {
 .report-section table,
 #view-assets-modal table,
 #asset-history-modal table {
-  min-width: 640px;
+  min-width: var(--table-min-width);
 }
 
 #audit-logs,
@@ -521,7 +528,7 @@ table td {
   .report-section table,
   #view-assets-modal table,
   #asset-history-modal table {
-    min-width: 560px;
+    min-width: var(--table-min-width-mobile);
   }
 }
 
