@@ -146,15 +146,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     relativeLabel: getReminderRelativeLabel(nextService, today)
                 };
                 if (isReminderSuppressed(reminder, now)) return;
-                if (nextService >= today && nextService <= monthLimit) dueThisMonthCount++;
+                if (category !== "overdue" && nextService <= monthLimit) dueThisMonthCount++;
                 if (category === "overdue") reminderGroups.overdue.push(reminder);
                 else if (category === "due-soon") reminderGroups.dueSoon.push(reminder);
                 else reminderGroups.upcomingLater.push(reminder);
             });
 
-            reminderGroups.overdue.sort((left, right) => left.nextService - right.nextService);
-            reminderGroups.dueSoon.sort((left, right) => left.nextService - right.nextService);
-            reminderGroups.upcomingLater.sort((left, right) => left.nextService - right.nextService);
+            reminderGroups.overdue.sort((a, b) => a.nextService - b.nextService);
+            reminderGroups.dueSoon.sort((a, b) => a.nextService - b.nextService);
+            reminderGroups.upcomingLater.sort((a, b) => a.nextService - b.nextService);
 
             const overdue = reminderGroups.overdue;
             const dueSoon = reminderGroups.dueSoon;
