@@ -1080,7 +1080,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     applyThemePreference(nextPreferences.themeMode);
                     applyLanguagePreference(nextPreferences.language);
                     renderUpcomingReminders();
-                    addAuditLog("Global Preferences updated", `Currency: ${nextPreferences.defaultServiceCurrency}, Theme: ${nextPreferences.themeMode}`);
+                addAuditLog("Global Preferences updated", `Currency: ${escapeHtml(nextPreferences.defaultServiceCurrency)}, Theme: ${escapeHtml(nextPreferences.themeMode)}`);
                     // Keep theme panel in sync
                     if (themeSelect) themeSelect.value = nextPreferences.themeMode;
                     // Keep profile language in sync
@@ -1590,7 +1590,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 applyLanguagePreference(next.language);
                 if (languageSelector) languageSelector.value = next.language;
-                addAuditLog("Profile Settings updated", `Display name: ${next.displayName}${next.fleetName ? ", Fleet: " + next.fleetName : ""}`);
+                addAuditLog("Profile Settings updated", `Display name: ${escapeHtml(next.displayName)}${next.fleetName ? ", Fleet: " + escapeHtml(next.fleetName) : ""}`);
                 showFeedback("Profile settings saved.", "success");
             });
         }
@@ -2095,7 +2095,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         }));
                         saveStoredAssets(assets);
                         refreshAssetDependentViews();
-                        addAuditLog("Asset added", `Name: ${name}, Type: ${type}`);
+                        addAuditLog("Asset added", `Name: ${escapeHtml(name)}, Type: ${escapeHtml(type)}`);
                         showFeedback("Asset added successfully.", "success");
                         modal.remove();
                     });
@@ -2474,7 +2474,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     showAssetDetailsAndHistory(assets[idx]);
                 }
                 editModal.remove();
-                addAuditLog("Asset updated", `Name: ${updatedName}`);
+                addAuditLog("Asset updated", `Name: ${escapeHtml(updatedName)}`);
                 showFeedback("Asset updated successfully.", "success");
             });
         }
@@ -2503,7 +2503,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const detailsModal = document.getElementById("asset-history-modal");
                 if (detailsModal) detailsModal.remove();
             }
-            addAuditLog("Asset deleted", `Name: ${assetLabel}`);
+            addAuditLog("Asset deleted", `Name: ${escapeHtml(assetLabel)}`);
             showFeedback("Asset deleted successfully.", "success");
         }
 
