@@ -2553,7 +2553,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         ],
                         body: (asset.history || []).map(ev => ({
                             date: new Date(ev.date).toLocaleDateString(),
-                            operation: ev.operation || "",
+                            operation: ev.operation || ev.type || "",
                             label: ev.label || "",
                             cost: (() => {
                                 const serviceCostEntry = getServiceCostEntry(ev, asset);
@@ -3286,12 +3286,4 @@ document.addEventListener("DOMContentLoaded", function () {
             newTab.document.close();
         });
 
-
-        // --- Reminder Notification Bar ---
-        const reminderBar = document.getElementById("reminder-bar");
-        if (reminderBar) {
-            setTimeout(() => {
-                reminderBar.innerHTML = "<p>You have 2 upcoming service reminders.</p>";
-            }, 4000);
-        }
     });
