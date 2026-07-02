@@ -1146,18 +1146,142 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
         const exportPdfBtn = document.getElementById("export-pdf");
-        if (exportPdfBtn && window.jspdf) {
+        if (exportPdfBtn) {
             exportPdfBtn.addEventListener("click", () => {
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    showFeedback("PDF export is unavailable (jsPDF not loaded).", "error");
+                    return;
+                }
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                if (typeof doc.autoTable !== "function") {
+                    showFeedback("PDF export is unavailable (AutoTable not loaded).", "error");
+                    return;
+                }
+
                 const assets = getStoredAssets();
-                const doc = new window.jspdf.jsPDF();
-                doc.text("Service History Report", 10, 10);
-                assets.forEach((a, i) => {
-                    doc.text(
-                        `${a.name} - ${a.type} - ${a.status} - ${a.vin || ""} - ${a.year || ""} - ${a.color || ""} - ${new Date(a.created).toLocaleString()}`,
-                        10,
-                        20 + i * 10
-                    );
+                const PAGE_MARGIN = 14;
+                const PAGE_WIDTH = doc.internal.pageSize.getWidth();
+                const TABLE_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
+
+                // Per-asset section color palette (header bar color, alternate row fill)
+                const SECTION_COLORS = [
+                    { header: [56, 142, 60],   body: [198, 239, 206] }, // green
+                    { header: [30, 136, 229],  body: [187, 222, 251] }, // blue
+                    { header: [245, 124, 0],   body: [255, 224, 178] }, // orange
+                    { header: [123, 31, 162],  body: [225, 190, 231] }, // purple
+                ];
+
+                // Column widths that sum exactly to TABLE_WIDTH (182 mm for A4)
+                const COL_DATE      = 24;
+                const COL_OPERATION = 28;
+                const COL_LABEL     = 24;
+                const COL_COST      = 26;
+                const COL_NOTE      = TABLE_WIDTH - COL_DATE - COL_OPERATION - COL_LABEL - COL_COST;
+
+                // Document title
+                doc.setFontSize(16);
+                doc.setFont(undefined, "bold");
+                doc.text("Service History Report", PAGE_MARGIN, 18);
+                doc.setFont(undefined, "normal");
+                doc.setFontSize(9);
+                doc.setTextColor(100, 100, 100);
+                doc.text(
+                    `Generated: ${new Date().toLocaleString()}   |   Assets: ${assets.length}`,
+                    PAGE_MARGIN, 25
+                );
+                doc.setTextColor(0, 0, 0);
+
+                let currentY = 32;
+
+                assets.forEach((asset, idx) => {
+                    if (idx > 0) {
+                        doc.addPage();
+                        currentY = 14;
+                    }
+
+                    const colors = SECTION_COLORS[idx % SECTION_COLORS.length];
+
+                    // Colored asset header bar
+                    doc.setFillColor(...colors.header);
+                    doc.rect(PAGE_MARGIN, currentY, TABLE_WIDTH, 9, "F");
+                    doc.setFontSize(11);
+                    doc.setFont(undefined, "bold");
+                    doc.setTextColor(255, 255, 255);
+                    doc.text(`Asset ${idx + 1}: ${asset.name}`, PAGE_MARGIN + 2, currentY + 6.5);
+                    doc.setFont(undefined, "normal");
+                    doc.setTextColor(0, 0, 0);
+                    currentY += 11;
+
+                    // Asset metadata line
+                    const infoItems = [
+                        `Type: ${asset.type || "-"}`,
+                        `Status: ${asset.status || "-"}`,
+                        asset.vin   ? `VIN: ${asset.vin}`     : null,
+                        asset.year  ? `Year: ${asset.year}`   : null,
+                        asset.color ? `Color: ${asset.color}` : null,
+                    ].filter(Boolean);
+                    doc.setFontSize(8.5);
+                    doc.setTextColor(60, 60, 60);
+                    doc.text(infoItems.join("   |   "), PAGE_MARGIN + 2, currentY);
+                    doc.setTextColor(0, 0, 0);
+                    currentY += 7;
+
+                    const history = asset.history || [];
+
+                    if (history.length === 0) {
+                        doc.setFontSize(9);
+                        doc.setTextColor(140, 140, 140);
+                        doc.text("No history events recorded for this asset.", PAGE_MARGIN + 2, currentY);
+                        doc.setTextColor(0, 0, 0);
+                        currentY += 10;
+                        return;
+                    }
+
+                    doc.autoTable({
+                        columns: [
+                            { header: "Date",      dataKey: "date" },
+                            { header: "Operation", dataKey: "operation" },
+                            { header: "Label",     dataKey: "label" },
+                            { header: "Cost",      dataKey: "cost" },
+                            { header: "Note",      dataKey: "note" },
+                        ],
+                        body: history.map(ev => ({
+                            date:      new Date(ev.date).toLocaleDateString(),
+                            operation: ev.operation || ev.type || "",
+                            label:     ev.label || "",
+                            cost: (() => {
+                                const entry = getServiceCostEntry(ev, asset);
+                                return entry ? formatCurrency(entry.amount, entry.currency) : "";
+                            })(),
+                            note: ev.note || "",
+                        })),
+                        startY: currentY,
+                        margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
+                        styles: { fontSize: 8, overflow: "linebreak", cellPadding: 2 },
+                        headStyles: {
+                            fillColor: colors.header,
+                            textColor: [255, 255, 255],
+                            halign: "center",
+                            fontStyle: "bold",
+                        },
+                        bodyStyles: { fillColor: [255, 255, 255] },
+                        alternateRowStyles: { fillColor: colors.body },
+                        theme: "grid",
+                        columnStyles: {
+                            date:      { cellWidth: COL_DATE },
+                            operation: { cellWidth: COL_OPERATION },
+                            label:     { cellWidth: COL_LABEL },
+                            cost:      { cellWidth: COL_COST },
+                            note:      { cellWidth: COL_NOTE, overflow: "linebreak" },
+                        },
+                    });
+
+                    currentY = (doc.lastAutoTable && doc.lastAutoTable.finalY)
+                        ? doc.lastAutoTable.finalY + 10
+                        : currentY + 10;
                 });
+
                 doc.save("service-history.pdf");
             });
         }
@@ -2528,52 +2652,84 @@ document.addEventListener("DOMContentLoaded", function () {
                         return;
                     }
 
-                    let y = 10;
-                    doc.setFontSize(16);
-                    doc.text(`Service History for: ${asset.name}`, 10, y);
-                    y += 10;
-                    doc.setFontSize(10);
-                    doc.text(`Type: ${asset.type || "-"}`, 10, y);
-                    y += 6;
-                    doc.text(`Status: ${asset.status || "-"}`, 10, y);
-                    y += 6;
-                    doc.text(`VIN: ${asset.vin || "-"}`, 10, y);
-                    y += 6;
-                    doc.text(`Year: ${asset.year || "-"}`, 10, y);
-                    y += 10;
+                    const PAGE_MARGIN = 14;
+                    const PAGE_WIDTH  = doc.internal.pageSize.getWidth();
+                    const TABLE_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
+                    const HEADER_COLOR = [22, 160, 133];
+                    const ALT_ROW_COLOR = [204, 245, 238];
 
-                    // Table data
-                    doc.autoTable({
-                        columns: [
-                            { header: "Date", dataKey: "date" },
-                            { header: "Operation", dataKey: "operation" },
-                            { header: "Label", dataKey: "label" },
-                            { header: "Cost", dataKey: "cost" },
-                            { header: "Note", dataKey: "note" }
-                        ],
-                        body: (asset.history || []).map(ev => ({
-                            date: new Date(ev.date).toLocaleDateString(),
-                            operation: ev.operation || ev.type || "",
-                            label: ev.label || "",
-                            cost: (() => {
-                                const serviceCostEntry = getServiceCostEntry(ev, asset);
-                                return serviceCostEntry ? formatCurrency(serviceCostEntry.amount, serviceCostEntry.currency) : "";
-                            })(),
-                            note: ev.note || ""
-                        })),
-                        startY: y,
-                        styles: { fontSize: 9 },
-                        headStyles: { fillColor: [22, 160, 133],halign:'center' },
-                        theme: "grid",
-                        tableWidth: "auto",
-                        columnStyles: {
-                            note: { cellWidth: 70, overflow: 'linebreak' },
-                            date: { cellWidth: 26 },
-                            operation: { cellWidth: 24 },
-                            label: { cellWidth: 20 },
-                            cost: { cellWidth: 28 }
-                        }
-                    });
+                    // Column widths that sum to TABLE_WIDTH
+                    const COL_DATE      = 24;
+                    const COL_OPERATION = 28;
+                    const COL_LABEL     = 24;
+                    const COL_COST      = 26;
+                    const COL_NOTE      = TABLE_WIDTH - COL_DATE - COL_OPERATION - COL_LABEL - COL_COST;
+
+                    // Document header
+                    doc.setFontSize(16);
+                    doc.setFont(undefined, "bold");
+                    doc.text(`Service History: ${asset.name}`, PAGE_MARGIN, 18);
+                    doc.setFont(undefined, "normal");
+
+                    // Asset metadata below title
+                    const infoItems = [
+                        `Type: ${asset.type || "-"}`,
+                        `Status: ${asset.status || "-"}`,
+                        `VIN: ${asset.vin || "-"}`,
+                        `Year: ${asset.year || "-"}`,
+                        asset.color ? `Color: ${asset.color}` : null,
+                    ].filter(Boolean);
+                    doc.setFontSize(9);
+                    doc.setTextColor(60, 60, 60);
+                    doc.text(infoItems.join("   |   "), PAGE_MARGIN, 26);
+                    doc.setTextColor(0, 0, 0);
+
+                    const history = asset.history || [];
+                    if (history.length === 0) {
+                        doc.setFontSize(9);
+                        doc.setTextColor(140, 140, 140);
+                        doc.text("No history events recorded for this asset.", PAGE_MARGIN, 36);
+                        doc.setTextColor(0, 0, 0);
+                    } else {
+                        doc.autoTable({
+                            columns: [
+                                { header: "Date",      dataKey: "date" },
+                                { header: "Operation", dataKey: "operation" },
+                                { header: "Label",     dataKey: "label" },
+                                { header: "Cost",      dataKey: "cost" },
+                                { header: "Note",      dataKey: "note" },
+                            ],
+                            body: history.map(ev => ({
+                                date:      new Date(ev.date).toLocaleDateString(),
+                                operation: ev.operation || ev.type || "",
+                                label:     ev.label || "",
+                                cost: (() => {
+                                    const serviceCostEntry = getServiceCostEntry(ev, asset);
+                                    return serviceCostEntry ? formatCurrency(serviceCostEntry.amount, serviceCostEntry.currency) : "";
+                                })(),
+                                note: ev.note || "",
+                            })),
+                            startY: 32,
+                            margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
+                            styles: { fontSize: 8, overflow: "linebreak", cellPadding: 2 },
+                            headStyles: {
+                                fillColor: HEADER_COLOR,
+                                textColor: [255, 255, 255],
+                                halign: "center",
+                                fontStyle: "bold",
+                            },
+                            bodyStyles: { fillColor: [255, 255, 255] },
+                            alternateRowStyles: { fillColor: ALT_ROW_COLOR },
+                            theme: "grid",
+                            columnStyles: {
+                                date:      { cellWidth: COL_DATE },
+                                operation: { cellWidth: COL_OPERATION },
+                                label:     { cellWidth: COL_LABEL },
+                                cost:      { cellWidth: COL_COST },
+                                note:      { cellWidth: COL_NOTE, overflow: "linebreak" },
+                            },
+                        });
+                    }
                     doc.save(`${asset.name.replace(/\s+/g, "_")}_Service_History.pdf`);
                 };
             }
