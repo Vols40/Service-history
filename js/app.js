@@ -1201,9 +1201,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 doc.setFontSize(11);
                 doc.setFont(undefined, "bold");
                 const titleLines = doc.splitTextToSize(assetTitle, TABLE_WIDTH - 6);
-                // Use jsPDF's actual line height for accurate block sizing
+                // Use jsPDF's actual line height for accurate block sizing.
+                // PT_TO_MM: converts jsPDF internal point units to millimetres (1 pt = 0.352778 mm).
+                // CAP_HEIGHT_RATIO: typical ratio of cap-height to font em-size (~72 %).
+                const PT_TO_MM = 0.352778;
+                const CAP_HEIGHT_RATIO = 0.72;
                 const titleLineH = doc.getLineHeight() / doc.internal.scaleFactor;
-                const titleCapH = doc.getFontSize() * 0.352778 * 0.72; // cap-height in mm
+                const titleCapH = doc.getFontSize() * PT_TO_MM * CAP_HEIGHT_RATIO;
                 const titlePadV = 3;
                 const titleBlockHeight = Math.max(10,
                     titleLines.length * titleLineH + 2 * titlePadV);
@@ -1243,7 +1247,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 doc.setFontSize(8.5);
                 doc.setFont(undefined, "bold");
                 doc.setTextColor(255, 255, 255);
-                doc.text("Service History Records", PAGE_MARGIN + 2, currentY + 4.2);
+                // Derive baseline using the same cap-height formula for consistency
+                const subCapH = doc.getFontSize() * PT_TO_MM * CAP_HEIGHT_RATIO;
+                const subPadV = (subHeaderHeight - subCapH) / 2;
+                doc.text("Service History Records", PAGE_MARGIN + 2, currentY + subPadV + subCapH);
                 doc.setFont(undefined, "normal");
                 doc.setTextColor(0, 0, 0);
                 currentY += subHeaderHeight + 1;
