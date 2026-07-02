@@ -314,14 +314,6 @@ document.addEventListener("DOMContentLoaded", function () {
         renderUpcomingReminders();
 
         //---Recent Activities---
-        document.querySelectorAll(".recent-activities-link").forEach(function (link) {
-            link.addEventListener("click", function (e) {
-                e.preventDefault();
-                renderRecentActivities();
-                document.getElementById("recent-activities").style.display = "block";
-            });
-        });
-
         const ACTIVITY_DETAIL_SEPARATOR = " • ";
 
         function getRelativeTimeLabel(dateValue) {
@@ -1091,17 +1083,36 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (!file) return;
                 if (file.type !== "application/json") {
                     showFeedback("Please select a valid JSON file.", "error");
+                    event.target.value = "";
                     return;
                 }
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
                         const parsedData = JSON.parse(e.target.result);
-                        const importedCount = Array.isArray(parsedData) ? parsedData.length : 1;
-                        showFeedback(`JSON file validated successfully (${importedCount} record${importedCount === 1 ? "" : "s"}).`, "success");
+                        let rawAssets;
+                        if (Array.isArray(parsedData)) {
+                            rawAssets = parsedData;
+                        } else if (parsedData && typeof parsedData === "object" && Array.isArray(parsedData.assets)) {
+                            rawAssets = parsedData.assets;
+                        } else {
+                            showFeedback("Unsupported JSON shape: expected an array or an object with an \"assets\" array.", "error");
+                            event.target.value = "";
+                            return;
+                        }
+                        const normalized = rawAssets.map(normalizeAsset).filter(Boolean);
+                        if (normalized.length === 0) {
+                            showFeedback("No valid assets found in the imported file.", "error");
+                            event.target.value = "";
+                            return;
+                        }
+                        saveStoredAssets(normalized);
+                        refreshAssetDependentViews();
+                        showFeedback(`Imported ${normalized.length} asset${normalized.length === 1 ? "" : "s"} successfully.`, "success");
                     } catch {
                         showFeedback("Invalid JSON format.", "error");
                     }
+                    event.target.value = "";
                 };
                 reader.readAsText(file);
             });
@@ -1821,8 +1832,8 @@ document.addEventListener("DOMContentLoaded", function () {
                             <td>${highlightSearchMatch(asset.color || "—", activeAssetSearchQuery)}</td>
                             <td>${escapeHtml(formatDisplayDate(asset.created || asset.lastServiceDate))}</td>
                             <td>
-                                <button type="button" data-edit-asset="${index}">Edit</button>
-                                <button type="button" data-delete-asset="${index}" style="margin-left:0.5em;">Delete</button>
+                                <button type="button" data-edit-asset="${escapeHtml(asset.id)}">Edit</button>
+                                <button type="button" data-delete-asset="${escapeHtml(asset.id)}" style="margin-left:0.5em;">Delete</button>
                             </td>
                         </tr>`;
                 }).join("")
@@ -1883,10 +1894,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 btn.addEventListener("click", () => renderAssetsModal(btn.getAttribute("data-asset-filter")));
             });
             modal.querySelectorAll("button[data-edit-asset]").forEach(btn => {
-                btn.addEventListener("click", () => openEditAssetModal(parseInt(btn.getAttribute("data-edit-asset"), 10)));
+                btn.addEventListener("click", () => openEditAssetModal(btn.getAttribute("data-edit-asset")));
             });
             modal.querySelectorAll("button[data-delete-asset]").forEach(btn => {
-                btn.addEventListener("click", () => deleteAsset(parseInt(btn.getAttribute("data-delete-asset"), 10)));
+                btn.addEventListener("click", () => deleteAsset(btn.getAttribute("data-delete-asset")));
             });
 
             const liveSearchInput = modal.querySelector("#asset-live-search");
@@ -1994,9 +2005,9 @@ document.addEventListener("DOMContentLoaded", function () {
             updateSelectionUi();
         }
 
-        function openEditAssetModal(assetIndex) {
+        function openEditAssetModal(assetId) {
             const assets = getStoredAssets();
-            const asset = assets[assetIndex];
+            const asset = assets.find(a => a.id === assetId);
             if (!asset) {
                 renderAssetsModal();
                 return;
@@ -2085,11 +2096,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 const updatedHistory = Array.isArray(asset.history) ? [...asset.history] : [];
                 updatedHistory.push({
                     date: updatedAt,
-                    operation: "updated",
+                    operation: "Updated",
                     label: "Info",
                     note: "Asset details updated"
                 });
-                assets[assetIndex] = {
+                const idx = assets.findIndex(a => a.id === assetId);
+                if (idx === -1) {
+                    showFeedback("Asset no longer exists.", "error");
+                    editModal.remove();
+                    return;
+                }
+                assets[idx] = {
                     ...asset,
                     name: updatedName,
                     type: editModal.querySelector("#edit-asset-type").value.trim(),
@@ -2107,29 +2124,30 @@ document.addEventListener("DOMContentLoaded", function () {
                 refreshAssetDependentViews();
                 renderAssetsModal();
                 if (isAssetShownInDetailsModal(originalAsset)) {
-                    showAssetDetailsAndHistory(assets[assetIndex]);
+                    showAssetDetailsAndHistory(assets[idx]);
                 }
                 editModal.remove();
                 showFeedback("Asset updated successfully.", "success");
             });
         }
 
-        function deleteAsset(assetIndex) {
+        function deleteAsset(assetId) {
             const assets = getStoredAssets();
-            const asset = assets[assetIndex];
+            const asset = assets.find(a => a.id === assetId);
             if (!asset) {
                 renderAssetsModal();
                 return;
             }
 
-            const assetLabel = asset.name || `asset #${assetIndex + 1}`;
+            const assetLabel = asset.name || asset.id || "asset";
             if (!window.confirm(`Delete "${assetLabel}"? This action cannot be undone.`)) {
                 return;
             }
 
             const shouldCloseDetails = isAssetShownInDetailsModal(asset);
-            if (asset.id) selectedAssetIds.delete(asset.id);
-            assets.splice(assetIndex, 1);
+            selectedAssetIds.delete(asset.id);
+            const idx = assets.findIndex(a => a.id === assetId);
+            if (idx !== -1) assets.splice(idx, 1);
             saveStoredAssets(assets);
             refreshAssetDependentViews();
             renderAssetsModal();
