@@ -1665,6 +1665,64 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
+        // --- SETTINGS MODAL ---
+        const settingsModal = document.getElementById("settings-modal");
+        const settingsModalTitle = document.getElementById("settings-modal-title");
+        const settingsModalX = document.getElementById("settings-modal-x");
+        const settingsModalClose = document.getElementById("settings-modal-close");
+        const settingsModalBackdrop = document.getElementById("settings-modal-backdrop");
+
+        const settingsPanelMap = {
+            profile: { sectionId: "profile-settings", title: "Profile Settings" },
+            notifications: { sectionId: "notification-preferences", title: "Notification Preferences" },
+            theme: { sectionId: "theme-appearance", title: "Theme and Appearance" },
+            audit: { sectionId: "audit-logs", title: "Audit Logs" }
+        };
+
+        function openSettingsModal(panelKey, titleOverride) {
+            const config = settingsPanelMap[panelKey];
+            if (!config || !settingsModal) return;
+            // Hide all sections inside the modal body, then show the requested one
+            settingsModal.querySelectorAll(".settings-section").forEach(sec => sec.classList.remove("is-active"));
+            const target = document.getElementById(config.sectionId);
+            if (target) target.classList.add("is-active");
+            if (settingsModalTitle) settingsModalTitle.textContent = titleOverride || config.title;
+            settingsModal.classList.add("is-open");
+            document.body.classList.add("settings-modal-open");
+            // Focus the modal panel so keyboard users can navigate forward into content
+            const panel = document.getElementById("settings-modal-panel");
+            if (panel) panel.focus();
+        }
+
+        function closeSettingsModal() {
+            if (!settingsModal) return;
+            settingsModal.classList.remove("is-open");
+            document.body.classList.remove("settings-modal-open");
+        }
+
+        // Settings dropdown links
+        document.querySelectorAll("a[data-open-settings]").forEach(link => {
+            link.addEventListener("click", function (e) {
+                e.preventDefault();
+                const panelKey = this.getAttribute("data-open-settings");
+                const titleOverride = this.getAttribute("data-settings-title");
+                openSettingsModal(panelKey, titleOverride);
+            });
+        });
+
+        // Close via X button
+        if (settingsModalX) settingsModalX.addEventListener("click", closeSettingsModal);
+        // Close via footer Close button
+        if (settingsModalClose) settingsModalClose.addEventListener("click", closeSettingsModal);
+        // Close via backdrop click
+        if (settingsModalBackdrop) settingsModalBackdrop.addEventListener("click", closeSettingsModal);
+        // Close via ESC key
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && settingsModal && settingsModal.classList.contains("is-open")) {
+                closeSettingsModal();
+            }
+        });
+
 
 
         // --- ANALYTICS COLLABORATION FEATURES ---
