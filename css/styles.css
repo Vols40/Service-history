@@ -2429,3 +2429,114 @@ body.dark-mode {
 .dark-mode .settings-toggle-input:checked + .settings-toggle-switch {
   background: #2a77b3;
 }
+
+/* ---- Settings Modal ---- */
+.settings-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-modal.is-open {
+  display: flex;
+}
+
+.settings-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.settings-modal-panel {
+  position: relative;
+  z-index: 1;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+  width: min(600px, 96vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.25rem;
+  background: #0078d4;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.settings-modal-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.settings-modal-x {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.settings-modal-x:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.settings-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.4rem 1.5rem 0.5rem;
+}
+
+.settings-modal-body .settings-section {
+  display: none;
+}
+
+.settings-modal-body .settings-section.is-active {
+  display: block;
+}
+
+.settings-modal-footer {
+  padding: 0.75rem 1.5rem 1rem;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #e8f0f7;
+  flex-shrink: 0;
+}
+
+.btn-close-modal {
+  background: #0078d4;
+  color: #fff;
+  border: none;
+  padding: 8px 22px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.93rem;
+  transition: background 0.15s;
+}
+
+.btn-close-modal:hover {
+  background: #005a9e;
+}
+
+/* Dark mode: settings modal */
+.dark-mode .settings-modal-panel {
+  background: #1a2330;
+}
+
+.dark-mode .settings-modal-footer {
+  border-top-color: #2d3a49;
+}

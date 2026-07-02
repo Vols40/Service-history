@@ -80,10 +80,10 @@
                 <li class="dropdown">
                     <a href="#">Settings</a>
                     <ul class="dropdown-menu">
-                        <li><a href="#profile-settings">Profile Settings</a></li>
-                        <li><a href="#notification-preferences">Notification Preferences</a></li>
-                        <li><a href="#theme-appearance">Theme and Appearance</a></li>
-                        <li><a href="#audit-logs">Audit Logs</a></li>
+                        <li><a href="#" data-open-settings="profile" data-settings-title="Profile Settings">Profile Settings</a></li>
+                        <li><a href="#" data-open-settings="notifications" data-settings-title="Notification Preferences">Notification Preferences</a></li>
+                        <li><a href="#" data-open-settings="theme" data-settings-title="Theme and Appearance">Theme and Appearance</a></li>
+                        <li><a href="#" data-open-settings="audit" data-settings-title="Audit Logs">Audit Logs</a></li>
                     </ul>
                 </li>
             </ul>
@@ -247,132 +247,145 @@
         <button class="print-button" onclick="printSection('service-history-log')">Print Report</button>
     </div>
 
-    <!-- Profile Settings Section -->
-    <section id="profile-settings" class="settings-section">
-        <h2>Profile Settings</h2>
-        <p class="settings-section-desc">Customize your profile and display preferences.</p>
-        <form id="profile-settings-form" class="settings-form">
-            <div class="settings-field">
-                <label for="profile-display-name">Display Name</label>
-                <input type="text" id="profile-display-name" maxlength="50" placeholder="e.g. Vols40">
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+        <div class="settings-modal-backdrop" id="settings-modal-backdrop"></div>
+        <div class="settings-modal-panel">
+            <div class="settings-modal-header">
+                <span id="settings-modal-title" class="settings-modal-title"></span>
+                <button class="settings-modal-x" id="settings-modal-x" aria-label="Close settings">&times;</button>
             </div>
-            <div class="settings-field">
-                <label for="profile-fleet-name">Organization / Fleet Name</label>
-                <input type="text" id="profile-fleet-name" maxlength="80" placeholder="e.g. My Fleet">
-            </div>
-            <div class="settings-field">
-                <label for="profile-language">Language</label>
-                <select id="profile-language">
-                    <option value="en">English</option>
-                    <option value="ro">Română</option>
-                </select>
-            </div>
-            <p class="settings-help">Settings are stored locally in this browser.</p>
-            <div class="settings-actions">
-                <button type="submit">Save Profile Settings</button>
-            </div>
-        </form>
-    </section>
+            <div class="settings-modal-body">
 
-    <!-- Notification Preferences Section -->
-    <section id="notification-preferences" class="settings-section">
-        <h2>Notification Preferences</h2>
-        <p class="settings-section-desc">Control which alerts and reminders are shown.</p>
-        <div class="settings-toggle-list">
-            <label class="settings-toggle-row">
-                <span class="settings-toggle-label">
-                    <strong>Reminder Notifications</strong>
-                    <span>Show upcoming service reminder alerts in the dashboard.</span>
-                </span>
-                <input type="checkbox" id="notif-reminders" class="settings-toggle-input">
-                <span class="settings-toggle-switch" aria-hidden="true"></span>
-            </label>
-            <label class="settings-toggle-row">
-                <span class="settings-toggle-label">
-                    <strong>Due Soon Alerts</strong>
-                    <span>Highlight assets that are due for service soon.</span>
-                </span>
-                <input type="checkbox" id="notif-due-soon" class="settings-toggle-input">
-                <span class="settings-toggle-switch" aria-hidden="true"></span>
-            </label>
-            <label class="settings-toggle-row">
-                <span class="settings-toggle-label">
-                    <strong>Overdue Alerts</strong>
-                    <span>Highlight assets that are overdue for service.</span>
-                </span>
-                <input type="checkbox" id="notif-overdue" class="settings-toggle-input">
-                <span class="settings-toggle-switch" aria-hidden="true"></span>
-            </label>
-            <label class="settings-toggle-row">
-                <span class="settings-toggle-label">
-                    <strong>Toast Notifications</strong>
-                    <span>Show brief pop-up messages for actions and feedback.</span>
-                </span>
-                <input type="checkbox" id="notif-toast" class="settings-toggle-input">
-                <span class="settings-toggle-switch" aria-hidden="true"></span>
-            </label>
-        </div>
-        <p class="settings-help">Preferences are stored locally in this browser.</p>
-        <div class="settings-actions">
-            <button type="button" id="save-notification-prefs">Save Notification Preferences</button>
-        </div>
-    </section>
+                <!-- Profile Settings Section -->
+                <section id="profile-settings" class="settings-section">
+                    <p class="settings-section-desc">Customize your profile and display preferences.</p>
+                    <form id="profile-settings-form" class="settings-form">
+                        <div class="settings-field">
+                            <label for="profile-display-name">Display Name</label>
+                            <input type="text" id="profile-display-name" maxlength="50" placeholder="e.g. Vols40">
+                        </div>
+                        <div class="settings-field">
+                            <label for="profile-fleet-name">Organization / Fleet Name</label>
+                            <input type="text" id="profile-fleet-name" maxlength="80" placeholder="e.g. My Fleet">
+                        </div>
+                        <div class="settings-field">
+                            <label for="profile-language">Language</label>
+                            <select id="profile-language">
+                                <option value="en">English</option>
+                                <option value="ro">Română</option>
+                            </select>
+                        </div>
+                        <p class="settings-help">Settings are stored locally in this browser.</p>
+                        <div class="settings-actions">
+                            <button type="submit">Save Profile Settings</button>
+                        </div>
+                    </form>
+                </section>
 
-    <!-- Theme and Appearance Section -->
-    <section id="theme-appearance" class="settings-section">
-        <h2>Theme and Appearance</h2>
-        <p class="settings-section-desc">Customize how the dashboard looks and feels.</p>
-        <div class="settings-form">
-            <div class="settings-field">
-                <label for="theme-mode-select">Theme Mode</label>
-                <select id="theme-mode-select">
-                    <option value="system">System Default</option>
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                </select>
-            </div>
-            <div class="settings-toggle-list" style="margin-top:0.9em;">
-                <label class="settings-toggle-row">
-                    <span class="settings-toggle-label">
-                        <strong>High Contrast Mode</strong>
-                        <span>Increase contrast for better readability.</span>
-                    </span>
-                    <input type="checkbox" id="high-contrast-toggle" class="settings-toggle-input">
-                    <span class="settings-toggle-switch" aria-hidden="true"></span>
-                </label>
-            </div>
-        </div>
-        <p class="settings-help">Theme is applied immediately and stored locally.</p>
-        <div class="settings-actions">
-            <button type="button" id="save-theme-settings">Save Theme Settings</button>
-        </div>
-    </section>
+                <!-- Notification Preferences Section -->
+                <section id="notification-preferences" class="settings-section">
+                    <p class="settings-section-desc">Control which alerts and reminders are shown.</p>
+                    <div class="settings-toggle-list">
+                        <label class="settings-toggle-row">
+                            <span class="settings-toggle-label">
+                                <strong>Reminder Notifications</strong>
+                                <span>Show upcoming service reminder alerts in the dashboard.</span>
+                            </span>
+                            <input type="checkbox" id="notif-reminders" class="settings-toggle-input">
+                            <span class="settings-toggle-switch" aria-hidden="true"></span>
+                        </label>
+                        <label class="settings-toggle-row">
+                            <span class="settings-toggle-label">
+                                <strong>Due Soon Alerts</strong>
+                                <span>Highlight assets that are due for service soon.</span>
+                            </span>
+                            <input type="checkbox" id="notif-due-soon" class="settings-toggle-input">
+                            <span class="settings-toggle-switch" aria-hidden="true"></span>
+                        </label>
+                        <label class="settings-toggle-row">
+                            <span class="settings-toggle-label">
+                                <strong>Overdue Alerts</strong>
+                                <span>Highlight assets that are overdue for service.</span>
+                            </span>
+                            <input type="checkbox" id="notif-overdue" class="settings-toggle-input">
+                            <span class="settings-toggle-switch" aria-hidden="true"></span>
+                        </label>
+                        <label class="settings-toggle-row">
+                            <span class="settings-toggle-label">
+                                <strong>Toast Notifications</strong>
+                                <span>Show brief pop-up messages for actions and feedback.</span>
+                            </span>
+                            <input type="checkbox" id="notif-toast" class="settings-toggle-input">
+                            <span class="settings-toggle-switch" aria-hidden="true"></span>
+                        </label>
+                    </div>
+                    <p class="settings-help">Preferences are stored locally in this browser.</p>
+                    <div class="settings-actions">
+                        <button type="button" id="save-notification-prefs">Save Notification Preferences</button>
+                    </div>
+                </section>
 
-    <!-- Audit Logs Section -->
-    <section id="audit-logs" class="settings-section">
-        <h2>Audit Logs</h2>
-        <p class="settings-section-desc">Track important user actions for monitoring.</p>
-        <div class="audit-logs-actions">
-            <button type="button" id="clear-audit-logs">Clear Logs</button>
+                <!-- Theme and Appearance Section -->
+                <section id="theme-appearance" class="settings-section">
+                    <p class="settings-section-desc">Customize how the dashboard looks and feels.</p>
+                    <div class="settings-form">
+                        <div class="settings-field">
+                            <label for="theme-mode-select">Theme Mode</label>
+                            <select id="theme-mode-select">
+                                <option value="system">System Default</option>
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                            </select>
+                        </div>
+                        <div class="settings-toggle-list" style="margin-top:0.9em;">
+                            <label class="settings-toggle-row">
+                                <span class="settings-toggle-label">
+                                    <strong>High Contrast Mode</strong>
+                                    <span>Increase contrast for better readability.</span>
+                                </span>
+                                <input type="checkbox" id="high-contrast-toggle" class="settings-toggle-input">
+                                <span class="settings-toggle-switch" aria-hidden="true"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <p class="settings-help">Theme is applied immediately and stored locally.</p>
+                    <div class="settings-actions">
+                        <button type="button" id="save-theme-settings">Save Theme Settings</button>
+                    </div>
+                </section>
+
+                <!-- Audit Logs Section -->
+                <section id="audit-logs" class="settings-section">
+                    <p class="settings-section-desc">Track important user actions for monitoring.</p>
+                    <div class="audit-logs-actions">
+                        <button type="button" id="clear-audit-logs">Clear Logs</button>
+                    </div>
+                    <div class="audit-logs-table-wrap">
+                        <table id="audit-logs-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Action</th>
+                                    <th>User</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-logs-tbody">
+                                <tr>
+                                    <td colspan="4" class="empty-state">No audit log entries yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </div>
+            <div class="settings-modal-footer">
+                <button id="settings-modal-close" class="btn-close-modal">Close</button>
+            </div>
         </div>
-        <div class="audit-logs-table-wrap">
-            <table id="audit-logs-table">
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Action</th>
-                        <th>User</th>
-                        <th>Details</th>
-                    </tr>
-                </thead>
-                <tbody id="audit-logs-tbody">
-                    <tr>
-                        <td colspan="4" class="empty-state">No audit log entries yet.</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
+    </div>
     
     <!-- Floating Action Button -->
     <button class="fab" id="fab">+</button>
