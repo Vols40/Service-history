@@ -382,14 +382,20 @@ nav {
   border: 1px solid #c4d2e3;
   background: #ffffff;
   color: #1d456a;
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 0.8rem;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
   cursor: pointer;
+  box-shadow: none;
+  min-height: 28px;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .reminder-actions button:hover {
   background: #eff5ff;
+  transform: none;
+  box-shadow: none;
 }
 
 /*Recent Activity Section */
@@ -758,19 +764,28 @@ h3 {
 button {
   background-color: #0078d4;
   color: white;
-  border: none;
+  border: 1px solid transparent;
   margin-bottom: 2px;
-  padding: 9px 14px;
-  border-radius: 5px;
+  padding: 9px 18px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
   font-size: 0.95rem;
+  font-weight: 500;
   line-height: 1.2;
   min-height: 36px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06);
 }
 
 button:hover {
   background-color: #005a9e;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10);
 }
 
 .print-button {
@@ -2524,15 +2539,19 @@ body.settings-modal-open {
   background: #0078d4;
   color: #fff;
   border: none;
-  padding: 8px 22px;
-  border-radius: 5px;
+  padding: 9px 22px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 0.93rem;
-  transition: background 0.15s;
+  font-weight: 500;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10);
 }
 
 .btn-close-modal:hover {
   background: #005a9e;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.14);
+  transform: translateY(-1px);
 }
 
 /* Dark mode: settings modal */
