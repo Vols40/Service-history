@@ -1688,14 +1688,16 @@ document.addEventListener("DOMContentLoaded", function () {
             if (target) target.classList.add("is-active");
             if (settingsModalTitle) settingsModalTitle.textContent = titleOverride || config.title;
             settingsModal.classList.add("is-open");
-            document.body.style.overflow = "hidden";
-            if (settingsModalX) settingsModalX.focus();
+            document.body.classList.add("settings-modal-open");
+            // Focus the modal panel so keyboard users can navigate forward into content
+            const panel = document.getElementById("settings-modal-panel");
+            if (panel) panel.focus();
         }
 
         function closeSettingsModal() {
             if (!settingsModal) return;
             settingsModal.classList.remove("is-open");
-            document.body.style.overflow = "";
+            document.body.classList.remove("settings-modal-open");
         }
 
         // Settings dropdown links

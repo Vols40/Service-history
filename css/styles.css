@@ -2431,6 +2431,9 @@ body.dark-mode {
 }
 
 /* ---- Settings Modal ---- */
+body.settings-modal-open {
+  overflow: hidden;
+}
 .settings-modal {
   display: none;
   position: fixed;
