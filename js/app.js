@@ -19,7 +19,13 @@ document.addEventListener("DOMContentLoaded", function () {
             reminderDueSoonDays: 7,
             reminderLookAheadDays: 30,
             themeMode: "system",
-            language: "en"
+            language: "en",
+            displayName: "Vols40",
+            fleetName: "",
+            notifyReminders: true,
+            notifyDueSoon: true,
+            notifyOverdue: true,
+            notifyToast: true
         };
         const REMINDER_PREFS_KEY = "serviceReminderPreferences";
         const REMINDER_MODAL_FOCUS_DELAY_MS = 100;
@@ -71,7 +77,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     : DEFAULT_APP_PREFERENCES.themeMode,
                 language: APP_SUPPORTED_LANGUAGES.includes(languageCandidate)
                     ? languageCandidate
-                    : DEFAULT_APP_PREFERENCES.language
+                    : DEFAULT_APP_PREFERENCES.language,
+                displayName: (() => {
+                    const raw = typeof source.displayName === "string" ? source.displayName.trim() : "";
+                    return raw.length > 0 ? raw.slice(0, 50) : DEFAULT_APP_PREFERENCES.displayName;
+                })(),
+                fleetName: typeof source.fleetName === "string" ? source.fleetName.trim().slice(0, 80) : "",
+                notifyReminders: source.notifyReminders !== false,
+                notifyDueSoon: source.notifyDueSoon !== false,
+                notifyOverdue: source.notifyOverdue !== false,
+                notifyToast: source.notifyToast !== false
             };
         }
 
@@ -933,17 +948,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // --- LANGUAGE SELECTOR ---
         const translations = {
-            en: { title: "Service History", welcome: "Welcome Back, Vols40!", dashboard: "Your Service History Dashboard" },
-            ro: { title: "Istoric Service", welcome: "Bine ai revenit, Vols40!", dashboard: "Tabloul de bord al istoricului de servicii" }
+            en: { title: "Service History", welcome: (name) => `Welcome Back, ${name}!`, dashboard: "Your Service History Dashboard" },
+            ro: { title: "Istoric Service", welcome: (name) => `Bine ai revenit, ${name}!`, dashboard: "Tabloul de bord al istoricului de servicii" }
         };
         const languageSelector = document.getElementById("language-selector");
         function applyLanguagePreference(languageCode = getAppPreferences().language) {
             const selected = translations[languageCode] ? languageCode : "en";
+            const prefs = getAppPreferences();
+            const displayName = prefs.displayName || DEFAULT_APP_PREFERENCES.displayName;
             const title = document.querySelector(".app-title");
             if (title) title.textContent = translations[selected].title;
             const welcome = document.querySelector(".welcome-section h2");
             const dash = document.querySelector(".welcome-section p");
-            if (welcome) welcome.textContent = translations[selected].welcome;
+            if (welcome) welcome.textContent = translations[selected].welcome(displayName);
             if (dash) dash.textContent = translations[selected].dashboard;
             if (languageSelector) languageSelector.value = selected;
         }
@@ -959,6 +976,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         let feedbackTimer = null;
         function showFeedback(message, type = "info") {
+            if (!getAppPreferences().notifyToast) return;
             const toast = document.getElementById("feedback-toast");
             if (!toast) return;
             toast.textContent = message;
@@ -1062,6 +1080,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     applyThemePreference(nextPreferences.themeMode);
                     applyLanguagePreference(nextPreferences.language);
                     renderUpcomingReminders();
+                    addAuditLog("Global Preferences updated", `Currency: ${nextPreferences.defaultServiceCurrency}, Theme: ${nextPreferences.themeMode}`);
+                    // Keep theme panel in sync
+                    if (themeSelect) themeSelect.value = nextPreferences.themeMode;
+                    // Keep profile language in sync
+                    const profileLang = document.getElementById("profile-language");
+                    if (profileLang) profileLang.value = nextPreferences.language;
                     showFeedback("Preferences saved locally.", "success");
                     closeModal();
                 });
@@ -1330,6 +1354,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 a.download = "service-history.json";
                 a.click();
                 URL.revokeObjectURL(url);
+                addAuditLog("Exported data as JSON", `${assets.length} asset(s)`);
             });
         }
         const exportCsvBtn = document.getElementById("export-csv");
@@ -1345,6 +1370,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 a.download = "service-history.csv";
                 a.click();
                 URL.revokeObjectURL(url);
+                addAuditLog("Exported data as CSV", `${assets.length} asset(s)`);
             });
         }
         const exportPdfBtn = document.getElementById("export-pdf");
@@ -1354,6 +1380,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 exportServiceHistoryPdf(assets, {
                     fileName: "service-history.pdf",
                 });
+                addAuditLog("Exported service history as PDF", `${assets.length} asset(s)`);
             });
         }
         const dropboxBtn = document.getElementById("upload-to-dropbox");
@@ -1486,33 +1513,157 @@ document.addEventListener("DOMContentLoaded", function () {
                 printWindow.close();
             }, 500);
         };
-        const highContrastToggle = document.getElementById("high-contrast-toggle");
-        if (highContrastToggle) {
-            highContrastToggle.addEventListener("change", () => {
-                document.body.classList.toggle("high-contrast", highContrastToggle.checked);
-                localStorage.setItem("highContrast", highContrastToggle.checked ? "1" : "0");
-            });
-            if (localStorage.getItem("highContrast") === "1") {
-                highContrastToggle.checked = true;
-                document.body.classList.add("high-contrast");
-            }
-        }
         function renderAuditLogs() {
-            const logs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
-            const tbody = document.querySelector("#audit-logs tbody");
-            if (tbody)
-                tbody.innerHTML = logs.map(log => `<tr>
-                    <td>${log.action}</td>
-                    <td>${log.user}</td>
-                    <td>${log.timestamp}</td>
-                    <td>${log.ip || "-"}</td>
-                </tr>`
-                ).join("") || tbody.innerHTML;
+            const logs = (() => {
+                try { return JSON.parse(localStorage.getItem("auditLogs") || "[]"); } catch { return []; }
+            })();
+            const tbody = document.getElementById("audit-logs-tbody");
+            if (!tbody) return;
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No audit log entries yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = logs.map(log => `<tr>
+                <td>${escapeHtml(log.timestamp || "")}</td>
+                <td>${escapeHtml(log.action || "")}</td>
+                <td>${escapeHtml(log.user || "")}</td>
+                <td>${escapeHtml(log.details || "")}</td>
+            </tr>`).join("");
         }
         renderServiceSummary();
         renderAssetPerformance();
         renderServiceHistoryLog();
         renderAuditLogs();
+
+        // --- AUDIT LOG HELPER ---
+        const AUDIT_LOG_KEY = "auditLogs";
+        const AUDIT_LOG_MAX = 100;
+        function addAuditLog(action, details = "") {
+            const logs = (() => {
+                try { return JSON.parse(localStorage.getItem(AUDIT_LOG_KEY) || "[]"); } catch { return []; }
+            })();
+            logs.unshift({
+                action: String(action || ""),
+                user: getAppPreferences().displayName || DEFAULT_APP_PREFERENCES.displayName,
+                timestamp: new Date().toLocaleString(),
+                details: String(details || "")
+            });
+            if (logs.length > AUDIT_LOG_MAX) logs.length = AUDIT_LOG_MAX;
+            localStorage.setItem(AUDIT_LOG_KEY, JSON.stringify(logs));
+            renderAuditLogs();
+        }
+
+        // --- CLEAR AUDIT LOGS ---
+        const clearAuditLogsBtn = document.getElementById("clear-audit-logs");
+        if (clearAuditLogsBtn) {
+            clearAuditLogsBtn.addEventListener("click", () => {
+                if (window.confirm("Clear all audit log entries? This cannot be undone.")) {
+                    localStorage.removeItem(AUDIT_LOG_KEY);
+                    renderAuditLogs();
+                    showFeedback("Audit logs cleared.", "success");
+                }
+            });
+        }
+
+        // --- PROFILE SETTINGS ---
+        function loadProfileSettingsUI() {
+            const prefs = getAppPreferences();
+            const nameInput = document.getElementById("profile-display-name");
+            const fleetInput = document.getElementById("profile-fleet-name");
+            const langSelect = document.getElementById("profile-language");
+            if (nameInput) nameInput.value = prefs.displayName || "";
+            if (fleetInput) fleetInput.value = prefs.fleetName || "";
+            if (langSelect) langSelect.value = prefs.language || "en";
+        }
+        loadProfileSettingsUI();
+        const profileSettingsForm = document.getElementById("profile-settings-form");
+        if (profileSettingsForm) {
+            profileSettingsForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const nameInput = document.getElementById("profile-display-name");
+                const fleetInput = document.getElementById("profile-fleet-name");
+                const langSelect = document.getElementById("profile-language");
+                const next = updateAppPreferences({
+                    displayName: nameInput ? nameInput.value.trim() : undefined,
+                    fleetName: fleetInput ? fleetInput.value.trim() : undefined,
+                    language: langSelect ? langSelect.value : undefined
+                });
+                applyLanguagePreference(next.language);
+                if (languageSelector) languageSelector.value = next.language;
+                addAuditLog("Profile Settings updated", `Display name: ${next.displayName}${next.fleetName ? ", Fleet: " + next.fleetName : ""}`);
+                showFeedback("Profile settings saved.", "success");
+            });
+        }
+
+        // --- NOTIFICATION PREFERENCES ---
+        function loadNotificationPrefsUI() {
+            const prefs = getAppPreferences();
+            const remindersToggle = document.getElementById("notif-reminders");
+            const dueSoonToggle = document.getElementById("notif-due-soon");
+            const overdueToggle = document.getElementById("notif-overdue");
+            const toastToggle = document.getElementById("notif-toast");
+            if (remindersToggle) remindersToggle.checked = prefs.notifyReminders !== false;
+            if (dueSoonToggle) dueSoonToggle.checked = prefs.notifyDueSoon !== false;
+            if (overdueToggle) overdueToggle.checked = prefs.notifyOverdue !== false;
+            if (toastToggle) toastToggle.checked = prefs.notifyToast !== false;
+        }
+        loadNotificationPrefsUI();
+        const saveNotifPrefsBtn = document.getElementById("save-notification-prefs");
+        if (saveNotifPrefsBtn) {
+            saveNotifPrefsBtn.addEventListener("click", () => {
+                const remindersToggle = document.getElementById("notif-reminders");
+                const dueSoonToggle = document.getElementById("notif-due-soon");
+                const overdueToggle = document.getElementById("notif-overdue");
+                const toastToggle = document.getElementById("notif-toast");
+                updateAppPreferences({
+                    notifyReminders: remindersToggle ? remindersToggle.checked : true,
+                    notifyDueSoon: dueSoonToggle ? dueSoonToggle.checked : true,
+                    notifyOverdue: overdueToggle ? overdueToggle.checked : true,
+                    notifyToast: toastToggle ? toastToggle.checked : true
+                });
+                addAuditLog("Notification Preferences updated");
+                showFeedback("Notification preferences saved.", "success");
+            });
+        }
+
+        // --- THEME AND APPEARANCE ---
+        const themeSelect = document.getElementById("theme-mode-select");
+        const themeHighContrastToggle = document.getElementById("high-contrast-toggle");
+        function loadThemeSettingsUI() {
+            const prefs = getAppPreferences();
+            if (themeSelect) themeSelect.value = prefs.themeMode || "system";
+            if (themeHighContrastToggle) themeHighContrastToggle.checked = localStorage.getItem("highContrast") === "1";
+        }
+        loadThemeSettingsUI();
+        if (themeSelect) {
+            themeSelect.addEventListener("change", () => {
+                const next = updateAppPreferences({ themeMode: themeSelect.value });
+                applyThemePreference(next.themeMode);
+            });
+        }
+        if (themeHighContrastToggle) {
+            themeHighContrastToggle.addEventListener("change", () => {
+                document.body.classList.toggle("high-contrast", themeHighContrastToggle.checked);
+                localStorage.setItem("highContrast", themeHighContrastToggle.checked ? "1" : "0");
+            });
+            if (localStorage.getItem("highContrast") === "1") {
+                themeHighContrastToggle.checked = true;
+                document.body.classList.add("high-contrast");
+            }
+        }
+        const saveThemeBtn = document.getElementById("save-theme-settings");
+        if (saveThemeBtn) {
+            saveThemeBtn.addEventListener("click", () => {
+                const themeMode = themeSelect ? themeSelect.value : getAppPreferences().themeMode;
+                const highContrast = themeHighContrastToggle ? themeHighContrastToggle.checked : false;
+                const next = updateAppPreferences({ themeMode });
+                applyThemePreference(next.themeMode);
+                document.body.classList.toggle("high-contrast", highContrast);
+                localStorage.setItem("highContrast", highContrast ? "1" : "0");
+                addAuditLog("Theme Settings updated", `Theme: ${themeMode}, High Contrast: ${highContrast ? "on" : "off"}`);
+                showFeedback("Theme settings saved.", "success");
+            });
+        }
 
 
 
@@ -1944,6 +2095,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         }));
                         saveStoredAssets(assets);
                         refreshAssetDependentViews();
+                        addAuditLog("Asset added", `Name: ${name}, Type: ${type}`);
                         showFeedback("Asset added successfully.", "success");
                         modal.remove();
                     });
@@ -2322,6 +2474,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     showAssetDetailsAndHistory(assets[idx]);
                 }
                 editModal.remove();
+                addAuditLog("Asset updated", `Name: ${updatedName}`);
                 showFeedback("Asset updated successfully.", "success");
             });
         }
@@ -2350,6 +2503,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const detailsModal = document.getElementById("asset-history-modal");
                 if (detailsModal) detailsModal.remove();
             }
+            addAuditLog("Asset deleted", `Name: ${assetLabel}`);
             showFeedback("Asset deleted successfully.", "success");
         }
 
