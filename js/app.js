@@ -1164,8 +1164,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function exportServiceHistoryPdf(assetsToExport, {
             fileName = "service-history.pdf",
-            title = "Service History Report",
-            subtitle = `Generated: ${new Date().toLocaleString()}   |   Assets: ${Array.isArray(assetsToExport) ? assetsToExport.length : 0}`,
         } = {}) {
             const doc = createServiceHistoryPdfDocument();
             if (!doc) return;
@@ -1180,19 +1178,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const COL_COST = 26;
             const COL_NOTE = TABLE_WIDTH - COL_DATE - COL_OPERATION - COL_LABEL - COL_COST;
 
-            doc.setFontSize(16);
-            doc.setFont(undefined, "bold");
-            const documentTitleLines = doc.splitTextToSize(title, TABLE_WIDTH);
-            doc.text(documentTitleLines, PAGE_MARGIN, 18);
-            doc.setFont(undefined, "normal");
-            doc.setFontSize(9);
-            doc.setTextColor(100, 100, 100);
-            const subtitleY = 18 + documentTitleLines.length * 6;
-            const subtitleLines = doc.splitTextToSize(subtitle, TABLE_WIDTH);
-            doc.text(subtitleLines, PAGE_MARGIN, subtitleY);
-            doc.setTextColor(0, 0, 0);
-
-            let currentY = subtitleY + subtitleLines.length * 4 + 3;
+            let currentY = 14;
 
             if (assets.length === 0) {
                 doc.setFontSize(9);
@@ -1210,7 +1196,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 const colors = PDF_SECTION_COLORS[idx % PDF_SECTION_COLORS.length];
-                const assetTitle = `Asset ${idx + 1}: ${asset?.name || "Unnamed Asset"}`;
+                const assetTitle = `Service History for: ${asset?.name || "Unnamed Asset"}`;
 
                 doc.setFontSize(11);
                 doc.setFont(undefined, "bold");
@@ -1340,8 +1326,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 const assets = getStoredAssets();
                 exportServiceHistoryPdf(assets, {
                     fileName: "service-history.pdf",
-                    title: "Service History Report",
-                    subtitle: `Generated: ${new Date().toLocaleString()}   |   Assets: ${assets.length}`,
                 });
             });
         }
@@ -2703,8 +2687,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 exportBtn.onclick = () => {
                     exportServiceHistoryPdf([asset], {
                         fileName: `${(asset?.name || "asset").replace(/\s+/g, "_")}_Service_History.pdf`,
-                        title: `Service History: ${asset?.name || "Asset"}`,
-                        subtitle: `Generated: ${new Date().toLocaleString()}   |   Assets: 1`,
                     });
                 };
             }
