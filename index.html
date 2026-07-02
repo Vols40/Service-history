@@ -19,12 +19,6 @@
             <h1 class="app-title">Service History</h1>
             <div class="header-actions">
         
-        <!-- Dark Mode Toggle -->
-        <button id="dark-mode-toggle" class="dark-mode-toggle">🌙 Dark Mode</button>
-
-        <!-- Preferences -->
-        <button id="open-preferences" class="preferences-toggle" type="button">⚙️ Preferences</button>
-
         <!-- Language Selector -->
         <select id="language-selector" aria-label="Language Selector">
             <option value="en" selected>English</option>
@@ -329,30 +323,18 @@
                 <!-- Theme and Appearance Section -->
                 <section id="theme-appearance" class="settings-section">
                     <p class="settings-section-desc">Customize how the dashboard looks and feels.</p>
-                    <div class="settings-form">
-                        <div class="settings-field">
-                            <label for="theme-mode-select">Theme Mode</label>
-                            <select id="theme-mode-select">
-                                <option value="system">System Default</option>
-                                <option value="light">Light</option>
-                                <option value="dark">Dark</option>
-                            </select>
-                        </div>
-                        <div class="settings-toggle-list" style="margin-top:0.9em;">
-                            <label class="settings-toggle-row">
-                                <span class="settings-toggle-label">
-                                    <strong>High Contrast Mode</strong>
-                                    <span>Increase contrast for better readability.</span>
-                                </span>
-                                <input type="checkbox" id="high-contrast-toggle" class="settings-toggle-input">
-                                <span class="settings-toggle-switch" aria-hidden="true"></span>
-                            </label>
-                        </div>
+                    <div class="theme-picker-grid" id="theme-picker-grid" role="radiogroup" aria-label="Select a theme"></div>
+                    <div class="settings-toggle-list" style="margin-top:1.2em;">
+                        <label class="settings-toggle-row">
+                            <span class="settings-toggle-label">
+                                <strong>High Contrast Mode</strong>
+                                <span>Increase contrast for better readability.</span>
+                            </span>
+                            <input type="checkbox" id="high-contrast-toggle" class="settings-toggle-input">
+                            <span class="settings-toggle-switch" aria-hidden="true"></span>
+                        </label>
                     </div>
                     <p class="settings-help">Theme is applied immediately and stored locally.</p>
-                    <div class="settings-actions">
-                        <button type="button" id="save-theme-settings">Save Theme Settings</button>
-                    </div>
                 </section>
 
                 <!-- Audit Logs Section -->
