@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
             reminderDueSoonDays: 7,
             reminderLookAheadDays: 30,
             themeMode: "system",
+            activeTheme: "original",
             language: "en",
             displayName: "Vols40",
             fleetName: "",
@@ -27,6 +28,77 @@ document.addEventListener("DOMContentLoaded", function () {
             notifyOverdue: true,
             notifyToast: true
         };
+
+        // Centralized theme configuration
+        const THEME_CONFIG = {
+            original: {
+                label: "Original",
+                group: "base",
+                swatch: ["#0078d4", "#f9f9f9"],
+                description: "The default dashboard theme"
+            },
+            "ocean-gradient": {
+                label: "Ocean Gradient",
+                group: "gradient",
+                swatch: ["#1a6fa8", "#0d9488"],
+                description: "Cool blue-teal gradient"
+            },
+            aurora: {
+                label: "Aurora",
+                group: "gradient",
+                swatch: ["#7c3aed", "#06b6d4"],
+                description: "Purple to cyan aurora gradient"
+            },
+            "midnight-violet": {
+                label: "Midnight Violet",
+                group: "gradient",
+                swatch: ["#1e1b4b", "#7c3aed"],
+                description: "Deep indigo and violet gradient"
+            },
+            "emerald-glass": {
+                label: "Emerald Glass",
+                group: "gradient",
+                swatch: ["#065f46", "#34d399"],
+                description: "Rich emerald green gradient"
+            },
+            "sunset-blaze": {
+                label: "Sunset Blaze",
+                group: "gradient",
+                swatch: ["#ea580c", "#f59e0b"],
+                description: "Warm orange-amber gradient"
+            },
+            "classic-blue": {
+                label: "Classic Blue",
+                group: "static",
+                swatch: ["#1e3a5f", "#e8f0fe"],
+                description: "Professional navy and white"
+            },
+            "slate-gray": {
+                label: "Slate Gray",
+                group: "static",
+                swatch: ["#334155", "#f1f5f9"],
+                description: "Cool neutral gray tones"
+            },
+            "forest-green": {
+                label: "Forest Green",
+                group: "static",
+                swatch: ["#14532d", "#f0fdf4"],
+                description: "Natural earthy green palette"
+            },
+            "warm-sand": {
+                label: "Warm Sand",
+                group: "static",
+                swatch: ["#92400e", "#fef3c7"],
+                description: "Warm desert sand tones"
+            },
+            "deep-navy": {
+                label: "Deep Navy",
+                group: "static",
+                swatch: ["#0f172a", "#e2e8f0"],
+                description: "Dark navy blue interface"
+            }
+        };
+        const APP_SUPPORTED_THEMES = Object.keys(THEME_CONFIG);
         const REMINDER_PREFS_KEY = "serviceReminderPreferences";
         const REMINDER_MODAL_FOCUS_DELAY_MS = 100;
         const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -59,6 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const currencyCandidate = String(source.defaultServiceCurrency || "").trim().toUpperCase();
             const languageCandidate = String(source.language || "").trim().toLowerCase();
             const themeCandidate = String(source.themeMode || "").trim().toLowerCase();
+            const activeThemeCandidate = String(source.activeTheme || "").trim().toLowerCase();
 
             return {
                 defaultServiceCurrency: APP_SUPPORTED_CURRENCIES.includes(currencyCandidate)
@@ -75,6 +148,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 themeMode: ["light", "dark", "system"].includes(themeCandidate)
                     ? themeCandidate
                     : DEFAULT_APP_PREFERENCES.themeMode,
+                activeTheme: APP_SUPPORTED_THEMES.includes(activeThemeCandidate)
+                    ? activeThemeCandidate
+                    : DEFAULT_APP_PREFERENCES.activeTheme,
                 language: APP_SUPPORTED_LANGUAGES.includes(languageCandidate)
                     ? languageCandidate
                     : DEFAULT_APP_PREFERENCES.language,
@@ -926,25 +1002,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
         renderQuickStatistics();
 
-        // --- DARK MODE TOGGLE ---
-        const darkModeToggle = document.getElementById("dark-mode-toggle");
-        function applyThemePreference(themeMode = getAppPreferences().themeMode) {
-            const normalizedTheme = ["light", "dark", "system"].includes(themeMode) ? themeMode : "system";
-            const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-            const shouldUseDark = normalizedTheme === "dark" || (normalizedTheme === "system" && prefersDark);
-            document.body.classList.toggle("dark-mode", shouldUseDark);
-            if (darkModeToggle) {
-                darkModeToggle.textContent = shouldUseDark ? "☀️ Light Mode" : "🌙 Dark Mode";
+        // --- THEME APPLICATION ---
+        function applyThemePreference(themeMode, activeTheme) {
+            const prefs = getAppPreferences();
+            const resolvedTheme = activeTheme !== undefined ? activeTheme : prefs.activeTheme;
+            const resolvedMode = themeMode !== undefined ? themeMode : prefs.themeMode;
+
+            // Apply named theme via data-theme attribute
+            if (resolvedTheme && resolvedTheme !== "original") {
+                document.body.setAttribute("data-theme", resolvedTheme);
+                document.body.classList.remove("dark-mode");
+            } else {
+                document.body.removeAttribute("data-theme");
+                // Fall back to light/dark/system mode for the original theme
+                const normalizedMode = ["light", "dark", "system"].includes(resolvedMode) ? resolvedMode : "system";
+                const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                const shouldUseDark = normalizedMode === "dark" || (normalizedMode === "system" && prefersDark);
+                document.body.classList.toggle("dark-mode", shouldUseDark);
             }
         }
         applyThemePreference();
-        if (darkModeToggle) {
-            darkModeToggle.addEventListener("click", () => {
-                const nextTheme = document.body.classList.contains("dark-mode") ? "light" : "dark";
-                updateAppPreferences({ themeMode: nextTheme });
-                applyThemePreference(nextTheme);
-            });
-        }
 
         // --- LANGUAGE SELECTOR ---
         const translations = {
@@ -1035,14 +1112,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <input type="number" id="pref-look-ahead-days" min="1" max="180" value="${preferences.reminderLookAheadDays}">
                             </div>
                             <div class="preferences-field">
-                                <label for="pref-theme-mode">Theme mode</label>
-                                <select id="pref-theme-mode">
-                                    <option value="system"${preferences.themeMode === "system" ? " selected" : ""}>System</option>
-                                    <option value="light"${preferences.themeMode === "light" ? " selected" : ""}>Light</option>
-                                    <option value="dark"${preferences.themeMode === "dark" ? " selected" : ""}>Dark</option>
-                                </select>
-                            </div>
-                            <div class="preferences-field">
                                 <label for="pref-language">Language</label>
                                 <select id="pref-language">
                                     <option value="en"${preferences.language === "en" ? " selected" : ""}>English</option>
@@ -1074,15 +1143,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         reminderSnoozeDays: form.querySelector("#pref-snooze-days").value,
                         reminderDueSoonDays: form.querySelector("#pref-due-soon-days").value,
                         reminderLookAheadDays: form.querySelector("#pref-look-ahead-days").value,
-                        themeMode: form.querySelector("#pref-theme-mode").value,
                         language: form.querySelector("#pref-language").value
                     });
-                    applyThemePreference(nextPreferences.themeMode);
                     applyLanguagePreference(nextPreferences.language);
                     renderUpcomingReminders();
-                addAuditLog("Global Preferences updated", `Currency: ${escapeHtml(nextPreferences.defaultServiceCurrency)}, Theme: ${escapeHtml(nextPreferences.themeMode)}`);
-                    // Keep theme panel in sync
-                    if (themeSelect) themeSelect.value = nextPreferences.themeMode;
+                    addAuditLog("Global Preferences updated", `Currency: ${escapeHtml(nextPreferences.defaultServiceCurrency)}`);
                     // Keep profile language in sync
                     const profileLang = document.getElementById("profile-language");
                     if (profileLang) profileLang.value = nextPreferences.language;
@@ -1627,20 +1692,58 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // --- THEME AND APPEARANCE ---
-        const themeSelect = document.getElementById("theme-mode-select");
         const themeHighContrastToggle = document.getElementById("high-contrast-toggle");
-        function loadThemeSettingsUI() {
+
+        function renderThemePicker() {
+            const grid = document.getElementById("theme-picker-grid");
+            if (!grid) return;
             const prefs = getAppPreferences();
-            if (themeSelect) themeSelect.value = prefs.themeMode || "system";
-            if (themeHighContrastToggle) themeHighContrastToggle.checked = localStorage.getItem("highContrast") === "1";
-        }
-        loadThemeSettingsUI();
-        if (themeSelect) {
-            themeSelect.addEventListener("change", () => {
-                const next = updateAppPreferences({ themeMode: themeSelect.value });
-                applyThemePreference(next.themeMode);
+            const currentTheme = prefs.activeTheme || "original";
+            const groups = [
+                { key: "base", label: "Base" },
+                { key: "gradient", label: "Gradient Themes" },
+                { key: "static", label: "Static Themes" }
+            ];
+            let html = "";
+            groups.forEach(group => {
+                const groupThemes = Object.entries(THEME_CONFIG).filter(([, cfg]) => cfg.group === group.key);
+                if (!groupThemes.length) return;
+                html += `<div class="theme-picker-group"><span class="theme-picker-group-label">${group.label}</span><div class="theme-picker-row">`;
+                groupThemes.forEach(([themeKey, cfg]) => {
+                    const isActive = themeKey === currentTheme;
+                    const [color1, color2] = cfg.swatch;
+                    html += `
+                        <button type="button"
+                            class="theme-swatch-btn${isActive ? " is-active" : ""}"
+                            data-theme-key="${themeKey}"
+                            title="${cfg.description}"
+                            aria-pressed="${isActive ? "true" : "false"}"
+                            aria-label="Select theme: ${cfg.label}">
+                            <span class="theme-swatch-preview" style="background:linear-gradient(135deg,${color1} 50%,${color2} 50%);" aria-hidden="true"></span>
+                            <span class="theme-swatch-label">${cfg.label}</span>
+                        </button>`;
+                });
+                html += `</div></div>`;
+            });
+            grid.innerHTML = html;
+            grid.querySelectorAll(".theme-swatch-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const key = btn.getAttribute("data-theme-key");
+                    updateAppPreferences({ activeTheme: key });
+                    applyThemePreference(undefined, key);
+                    addAuditLog("Theme changed", `Theme: ${key}`);
+                    renderThemePicker();
+                    showFeedback(`Theme "${THEME_CONFIG[key].label}" applied.`, "success");
+                });
             });
         }
+
+        function loadThemeSettingsUI() {
+            if (themeHighContrastToggle) themeHighContrastToggle.checked = localStorage.getItem("highContrast") === "1";
+            renderThemePicker();
+        }
+        loadThemeSettingsUI();
+
         if (themeHighContrastToggle) {
             themeHighContrastToggle.addEventListener("change", () => {
                 document.body.classList.toggle("high-contrast", themeHighContrastToggle.checked);
@@ -1650,19 +1753,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 themeHighContrastToggle.checked = true;
                 document.body.classList.add("high-contrast");
             }
-        }
-        const saveThemeBtn = document.getElementById("save-theme-settings");
-        if (saveThemeBtn) {
-            saveThemeBtn.addEventListener("click", () => {
-                const themeMode = themeSelect ? themeSelect.value : getAppPreferences().themeMode;
-                const highContrast = themeHighContrastToggle ? themeHighContrastToggle.checked : false;
-                const next = updateAppPreferences({ themeMode });
-                applyThemePreference(next.themeMode);
-                document.body.classList.toggle("high-contrast", highContrast);
-                localStorage.setItem("highContrast", highContrast ? "1" : "0");
-                addAuditLog("Theme Settings updated", `Theme: ${themeMode}, High Contrast: ${highContrast ? "on" : "off"}`);
-                showFeedback("Theme settings saved.", "success");
-            });
         }
 
         // --- SETTINGS MODAL ---
@@ -1689,6 +1779,8 @@ document.addEventListener("DOMContentLoaded", function () {
             if (settingsModalTitle) settingsModalTitle.textContent = titleOverride || config.title;
             settingsModal.classList.add("is-open");
             document.body.classList.add("settings-modal-open");
+            // Re-render theme picker when opening the theme panel to reflect latest selection
+            if (panelKey === "theme") renderThemePicker();
             // Focus the modal panel so keyboard users can navigate forward into content
             const panel = document.getElementById("settings-modal-panel");
             if (panel) panel.focus();
