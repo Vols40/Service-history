@@ -1200,16 +1200,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 doc.setFontSize(11);
                 doc.setFont(undefined, "bold");
-                const titleLines = doc.splitTextToSize(assetTitle, TABLE_WIDTH - 4);
-                const titleLineHeight = 5;
-                const titleBlockHeight = Math.max(10, titleLines.length * titleLineHeight + 4);
+                const titleLines = doc.splitTextToSize(assetTitle, TABLE_WIDTH - 6);
+                // Use jsPDF's actual line height for accurate block sizing.
+                // PT_TO_MM: converts jsPDF internal point units to millimetres (1 pt = 0.352778 mm).
+                // CAP_HEIGHT_RATIO: typical ratio of cap-height to font em-size (~72 %).
+                const PT_TO_MM = 0.352778;
+                const CAP_HEIGHT_RATIO = 0.72;
+                const titleLineH = doc.getLineHeight() / doc.internal.scaleFactor;
+                const titleCapH = doc.getFontSize() * PT_TO_MM * CAP_HEIGHT_RATIO;
+                const titlePadV = 3;
+                const titleBlockHeight = Math.max(10,
+                    titleLines.length * titleLineH + 2 * titlePadV);
                 doc.setFillColor(...colors.header);
                 doc.rect(PAGE_MARGIN, currentY, TABLE_WIDTH, titleBlockHeight, "F");
                 doc.setTextColor(255, 255, 255);
-                doc.text(titleLines, PAGE_MARGIN + 2, currentY + 5);
+                // Vertically centre text: align first-line baseline to padding + cap-height
+                doc.text(titleLines, PAGE_MARGIN + 2,
+                    currentY + titlePadV + titleCapH);
                 doc.setFont(undefined, "normal");
                 doc.setTextColor(0, 0, 0);
-                currentY += titleBlockHeight + 3;
+                // 1-unit gap so metadata table visually attaches to the title bar
+                currentY += titleBlockHeight + 1;
 
                 doc.autoTable({
                     startY: currentY,
@@ -1225,8 +1236,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
 
                 currentY = (doc.lastAutoTable && doc.lastAutoTable.finalY)
-                    ? doc.lastAutoTable.finalY + 5
-                    : currentY + 5;
+                    ? doc.lastAutoTable.finalY + 4
+                    : currentY + 4;
+
+                // Sub-header bar that visually separates metadata from the history table
+                // and keeps the same left/right boundary as the title bar and tables
+                const subHeaderHeight = 6;
+                doc.setFillColor(...colors.header);
+                doc.rect(PAGE_MARGIN, currentY, TABLE_WIDTH, subHeaderHeight, "F");
+                doc.setFontSize(8.5);
+                doc.setFont(undefined, "bold");
+                doc.setTextColor(255, 255, 255);
+                // Derive baseline using the same cap-height formula for consistency
+                const subCapH = doc.getFontSize() * PT_TO_MM * CAP_HEIGHT_RATIO;
+                const subPadV = (subHeaderHeight - subCapH) / 2;
+                doc.text("Service History Records", PAGE_MARGIN + 2, currentY + subPadV + subCapH);
+                doc.setFont(undefined, "normal");
+                doc.setTextColor(0, 0, 0);
+                currentY += subHeaderHeight + 1;
 
                 const historyRows = buildAssetPdfHistoryRows(asset);
 
