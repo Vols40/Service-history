@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 label: "Original",
                 group: "base",
                 swatch: ["#0078d4", "#f9f9f9"],
-                description: "The default dashboard theme"
+                description: "The original dashboard theme (light/dark/system)"
             },
             "ocean-gradient": {
                 label: "Ocean Gradient",
@@ -1712,6 +1712,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 groupThemes.forEach(([themeKey, cfg]) => {
                     const isActive = themeKey === currentTheme;
                     const [color1, color2] = cfg.swatch;
+                    const swatchBg = cfg.group === "gradient"
+                        ? `linear-gradient(135deg,${color1} 0%,${color2} 100%)`
+                        : `linear-gradient(90deg,${color1} 50%,${color2} 50%)`;
                     html += `
                         <button type="button"
                             class="theme-swatch-btn${isActive ? " is-active" : ""}"
@@ -1719,7 +1722,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             title="${cfg.description}"
                             aria-pressed="${isActive ? "true" : "false"}"
                             aria-label="Select theme: ${cfg.label}">
-                            <span class="theme-swatch-preview" style="background:linear-gradient(135deg,${color1} 50%,${color2} 50%);" aria-hidden="true"></span>
+                            <span class="theme-swatch-preview" style="background:${swatchBg};" aria-hidden="true"></span>
                             <span class="theme-swatch-label">${cfg.label}</span>
                         </button>`;
                 });
@@ -1731,7 +1734,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     const key = btn.getAttribute("data-theme-key");
                     updateAppPreferences({ activeTheme: key });
                     applyThemePreference(undefined, key);
-                    addAuditLog("Theme changed", `Theme: ${key}`);
+                    addAuditLog("Theme changed", `Theme: ${THEME_CONFIG[key].label}`);
                     renderThemePicker();
                     showFeedback(`Theme "${THEME_CONFIG[key].label}" applied.`, "success");
                 });
