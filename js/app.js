@@ -2139,7 +2139,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            const assetLabel = asset.name || "asset";
+            const assetLabel = asset.name || asset.id || "asset";
             if (!window.confirm(`Delete "${assetLabel}"? This action cannot be undone.`)) {
                 return;
             }
