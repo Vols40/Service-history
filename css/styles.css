@@ -3020,3 +3020,137 @@ body.settings-modal-open {
 [data-theme="deep-navy"] .settings-toggle-list {
   border-color: var(--th-card-border);
 }
+
+/* ============================================================
+   EXTENDED THEME COVERAGE
+   Keep content surfaces, controls, and dialogs in sync with the
+   selected named theme instead of only recoloring the shell.
+   ============================================================ */
+body[data-theme] section,
+body[data-theme] .welcome-section,
+body[data-theme] .quick-actions,
+body[data-theme] .global-search,
+body[data-theme] .recent-activities,
+body[data-theme] .upcoming-reminders,
+body[data-theme] .quick-statistics,
+body[data-theme] .analytics-page .data-visualization,
+body[data-theme] .analytics-page .predictive-maintenance,
+body[data-theme] .collaboration-page,
+body[data-theme] .team-roles,
+body[data-theme] .comments-and-notes,
+body[data-theme] .report-section,
+body[data-theme] .stat-item,
+body[data-theme] .service-cost-card,
+body[data-theme] .activity-item,
+body[data-theme] .reminder-group,
+body[data-theme] .asset-filter-summary,
+body[data-theme] .chart-placeholder {
+  background: var(--th-card-bg, #fff);
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] h1,
+body[data-theme] h2,
+body[data-theme] h3,
+body[data-theme] h4,
+body[data-theme] p,
+body[data-theme] li,
+body[data-theme] label,
+body[data-theme] strong,
+body[data-theme] td,
+body[data-theme] th {
+  color: var(--th-text, #333);
+}
+
+body[data-theme] a {
+  color: var(--th-link, #0078d4);
+}
+
+body[data-theme] button:not(.theme-swatch-btn):not(.settings-modal-x),
+body[data-theme] .import-button {
+  background: var(--th-btn-bg, #0078d4);
+  color: var(--th-btn-text, #fff);
+  border-color: var(--th-btn-bg, #0078d4);
+}
+
+body[data-theme] button:not(.theme-swatch-btn):not(.settings-modal-x):hover,
+body[data-theme] .import-button:hover {
+  background: var(--th-accent, #005a9e);
+  border-color: var(--th-accent, #005a9e);
+}
+
+body[data-theme] input:not([type="checkbox"]):not([type="radio"]),
+body[data-theme] select,
+body[data-theme] textarea {
+  background: var(--th-card-bg, #fff);
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #c0cad8);
+}
+
+body[data-theme] input::placeholder,
+body[data-theme] textarea::placeholder {
+  color: var(--th-text, #556);
+  opacity: 0.65;
+}
+
+body[data-theme] table {
+  color: var(--th-text, #333);
+}
+
+body[data-theme] table th {
+  background: var(--th-nav-bg, #005a9e);
+  color: var(--th-nav-text, #fff);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] table td {
+  background: var(--th-card-bg, #fff);
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] .settings-modal-backdrop,
+body[data-theme] #reports-overlay {
+  background: color-mix(in srgb, var(--th-body-bg, #000) 55%, #000 45%);
+}
+
+body[data-theme] #add-asset-modal > div,
+body[data-theme] #view-assets-modal > div,
+body[data-theme] #edit-asset-modal > div,
+body[data-theme] #asset-history-modal > div,
+body[data-theme] #edit-history-modal > div,
+body[data-theme] #preferences-modal > div,
+body[data-theme] .asset-detail-modal-inner {
+  background: var(--th-card-bg, #fff) !important;
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] .asset-detail-header {
+  background: var(--th-header-bg, #0078d4);
+  color: var(--th-header-text, #fff);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+/* High contrast is independent of the selected color palette. */
+body.high-contrast {
+  --hc-focus: #ffbf00;
+  filter: contrast(1.15);
+}
+
+body.high-contrast button,
+body.high-contrast input,
+body.high-contrast select,
+body.high-contrast textarea,
+body.high-contrast a {
+  outline-offset: 2px;
+}
+
+body.high-contrast button:focus-visible,
+body.high-contrast input:focus-visible,
+body.high-contrast select:focus-visible,
+body.high-contrast textarea:focus-visible,
+body.high-contrast a:focus-visible {
+  outline: 3px solid var(--hc-focus);
+}
