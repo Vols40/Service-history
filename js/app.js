@@ -105,6 +105,17 @@ document.addEventListener("DOMContentLoaded", function () {
         const APP_SUPPORTED_LANGUAGES = ["en", "ro"];
         const APP_SUPPORTED_CURRENCIES = ["USD", "EUR", "RON"];
 
+        // ========== DOCUMENTE & VALABILITATE (Document Validity) ==========
+        // Document types tracked per-asset: Rovinietă, RCA/Insurance, ITP, Licențe.
+        const DOCUMENT_TYPES = [
+            { key: "rovinieta", label: "Rovinietă", short: "ROV" },
+            { key: "rca", label: "RCA / Asigurare", short: "RCA" },
+            { key: "itp", label: "ITP", short: "ITP" },
+            { key: "licente", label: "Licențe", short: "LIC" }
+        ];
+        const DOCUMENT_REMINDER_THRESHOLDS_DAYS = [30, 15, 7];
+        const DOCUMENT_EXPIRING_SOON_DAYS = 30;
+
         function clampPreferenceNumber(value, fallback, min, max) {
             const parsed = Number.parseInt(value, 10);
             if (!Number.isFinite(parsed)) return fallback;
@@ -236,8 +247,20 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             list.innerHTML = reminders.map(reminder => {
                 const assetId = escapeHtml(reminder.id || "");
+                const isDocument = reminder.kind === "document";
+                const actionsHtml = isDocument
+                    ? `
+                        <button type="button" data-reminder-action="open-asset" data-reminder-asset-id="${assetId}">Open Asset</button>
+                        <button type="button" data-reminder-action="update-document" data-reminder-asset-id="${assetId}">Update Document</button>
+                    `
+                    : `
+                        <button type="button" data-reminder-action="open-asset" data-reminder-asset-id="${assetId}">Open Asset</button>
+                        <button type="button" data-reminder-action="record-service" data-reminder-asset-id="${assetId}">Record Service</button>
+                        <button type="button" data-reminder-action="snooze" data-reminder-asset-id="${assetId}">Snooze ${reminderSnoozeDays}d</button>
+                        <button type="button" data-reminder-action="dismiss" data-reminder-asset-id="${assetId}">Dismiss</button>
+                    `;
                 return `
-                    <li class="reminder-item reminder-${reminder.category}">
+                    <li class="reminder-item reminder-${reminder.category}${isDocument ? " reminder-document" : ""}">
                         <div class="reminder-main">
                             <div class="reminder-title-row">
                                 <strong>${escapeHtml(reminder.name || "Unnamed Asset")}</strong>
@@ -249,16 +272,12 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <span>${escapeHtml(reminder.relativeLabel)}</span>
                             </div>
                         </div>
-                        <div class="reminder-actions">
-                            <button type="button" data-reminder-action="open-asset" data-reminder-asset-id="${assetId}">Open Asset</button>
-                            <button type="button" data-reminder-action="record-service" data-reminder-asset-id="${assetId}">Record Service</button>
-                            <button type="button" data-reminder-action="snooze" data-reminder-asset-id="${assetId}">Snooze ${reminderSnoozeDays}d</button>
-                            <button type="button" data-reminder-action="dismiss" data-reminder-asset-id="${assetId}">Dismiss</button>
-                        </div>
+                        <div class="reminder-actions">${actionsHtml}</div>
                     </li>
                 `;
             }).join("");
         }
+
 
         function updateReminderCount(id, value) {
             const element = document.getElementById(id);
@@ -536,6 +555,11 @@ document.addEventListener("DOMContentLoaded", function () {
             { value: "active", label: "Active" },
             { value: "out-of-service", label: "Out of Service" }
         ];
+        // Extra filters shown only in the "View Assets" modal (document compliance).
+        const ASSET_MODAL_EXTRA_FILTER_CHIPS = [
+            { value: "docs-expiring", label: "Docs Expiring Soon" },
+            { value: "docs-expired", label: "Docs Expired" }
+        ];
         // Lightweight score scale used only for UI cues (0-100): healthy > due soon > overdue > out of service.
         const ASSET_HEALTH_SCORES = {
             healthy: 92,
@@ -546,7 +570,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const SERVICE_EVENT_OPERATIONS = new Set(["service", "maintenance", "repair", "parts change"]);
         const SUPPORTED_SERVICE_CURRENCIES = ["USD", "EUR", "RON"];
         const DEFAULT_SERVICE_CURRENCY = "USD";
-        const ASSETS_MODAL_COLUMNS = ["Select", "Name", "Type", "Status", "Health", "Latest Cost", "VIN", "Year", "Color", "Added", "Actions"];
+        const ASSETS_MODAL_COLUMNS = ["Select", "Name", "Type", "Status", "Health", "Docs", "Latest Cost", "VIN", "Year", "Color", "Added", "Actions"];
         let activeAssetFilter = "all";
         let activeAssetSearchQuery = "";
         let activeAssetSort = "name";
@@ -862,10 +886,22 @@ document.addEventListener("DOMContentLoaded", function () {
                     return info.statusLower === "active";
                 case "out-of-service":
                     return info.isOutOfService;
+                case "docs-expiring":
+                    return getAssetComplianceSummary(asset).hasExpiring;
+                case "docs-expired":
+                    return getAssetComplianceSummary(asset).hasExpired;
                 case "all":
                 default:
                     return true;
             }
+        }
+
+        function renderComplianceBadgesHtml(asset) {
+            const { statuses } = getAssetComplianceSummary(asset);
+            return `<span class="compliance-badges">${statuses.map(item => {
+                const title = `${item.label}: ${item.status.label}${item.status.daysLeft !== null && item.status.daysLeft !== undefined ? ` (${item.status.daysLeft}d)` : ""}`;
+                return `<span class="compliance-chip compliance-${item.status.state}" title="${escapeHtml(title)}">${escapeHtml(item.short)}</span>`;
+            }).join("")}</span>`;
         }
 
         function renderDashboardQuickFilters() {
@@ -2051,6 +2087,31 @@ document.addEventListener("DOMContentLoaded", function () {
             return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
         }
 
+        // Backward-compatible: assets saved before this feature simply lack a
+        // "documents" object, so every reader falls back to empty entries.
+        function normalizeDocumentEntry(raw) {
+            const source = raw && typeof raw === "object" ? raw : {};
+            return {
+                number: typeof source.number === "string" ? source.number : "",
+                expiry: typeof source.expiry === "string" ? source.expiry : "",
+                notes: typeof source.notes === "string" ? source.notes : ""
+            };
+        }
+
+        function normalizeAssetDocuments(raw) {
+            const source = raw && typeof raw === "object" ? raw : {};
+            const licenteSource = source.licente && typeof source.licente === "object" ? source.licente : {};
+            return {
+                rovinieta: normalizeDocumentEntry(source.rovinieta),
+                rca: normalizeDocumentEntry(source.rca),
+                itp: normalizeDocumentEntry(source.itp),
+                licente: {
+                    ...normalizeDocumentEntry(licenteSource),
+                    licenseType: typeof licenteSource.licenseType === "string" ? licenteSource.licenseType : ""
+                }
+            };
+        }
+
         function normalizeAsset(raw) {
             if (!raw || typeof raw !== "object") return null;
             return {
@@ -2070,7 +2131,39 @@ document.addEventListener("DOMContentLoaded", function () {
                 serviceCost: raw.serviceCost || "",
                 serviceCurrency: raw.serviceCurrency || "",
                 attachedFile: raw.attachedFile !== undefined ? raw.attachedFile : null,
-                history: Array.isArray(raw.history) ? raw.history : []
+                history: Array.isArray(raw.history) ? raw.history : [],
+                documents: normalizeAssetDocuments(raw.documents)
+            };
+        }
+
+        // Returns { state: "valid"|"expiring"|"expired"|"none", label, daysLeft }
+        function getDocumentStatus(expiry, now = new Date()) {
+            if (!expiry) return { state: "none", label: "Fără dată", daysLeft: null };
+            const expiryDate = new Date(expiry);
+            if (isNaN(expiryDate.getTime())) return { state: "none", label: "Fără dată", daysLeft: null };
+            const today = new Date(now);
+            today.setHours(0, 0, 0, 0);
+            expiryDate.setHours(0, 0, 0, 0);
+            const daysLeft = Math.round((expiryDate - today) / MILLISECONDS_PER_DAY);
+            if (daysLeft < 0) return { state: "expired", label: "Expirat", daysLeft };
+            if (daysLeft <= DOCUMENT_EXPIRING_SOON_DAYS) return { state: "expiring", label: "Expiră curând", daysLeft };
+            return { state: "valid", label: "Valid", daysLeft };
+        }
+
+        function getAssetDocumentStatuses(asset) {
+            const documents = (asset && asset.documents) || {};
+            return DOCUMENT_TYPES.map(docType => {
+                const entry = documents[docType.key] || {};
+                return { ...docType, entry, status: getDocumentStatus(entry.expiry) };
+            });
+        }
+
+        function getAssetComplianceSummary(asset) {
+            const statuses = getAssetDocumentStatuses(asset);
+            return {
+                statuses,
+                hasExpired: statuses.some(item => item.status.state === "expired"),
+                hasExpiring: statuses.some(item => item.status.state === "expiring")
             };
         }
 
@@ -2290,6 +2383,7 @@ document.addEventListener("DOMContentLoaded", function () {
             renderDashboardQuickFilters();
             const assets = getStoredAssets();
             const validAssetIds = new Set(assets.map(asset => asset.id));
+            // Selection persists across filter/search/sort changes; only prune ids of deleted assets.
             selectedAssetIds = new Set([...selectedAssetIds].filter(assetId => validAssetIds.has(assetId)));
             const filteredAssets = assets
                 .map((asset, index) => ({ asset, index }))
@@ -2325,15 +2419,18 @@ document.addEventListener("DOMContentLoaded", function () {
                     const latestServiceCostText = latestServiceCost
                         ? formatCurrency(latestServiceCost.amount, latestServiceCost.currency)
                         : "—";
+                    const safeName = asset.name || "—";
+                    const safeVin = asset.vin || "—";
                     return `
                         <tr>
-                            <td><input type="checkbox" data-select-asset="${escapeHtml(asset.id)}"${selectedAssetIds.has(asset.id) ? " checked" : ""}></td>
-                            <td>${highlightSearchMatch(asset.name || "—", activeAssetSearchQuery)}</td>
+                            <td><input type="checkbox" data-select-asset="${escapeHtml(asset.id)}"${selectedAssetIds.has(asset.id) ? " checked" : ""} aria-label="Select ${escapeHtml(safeName)}"></td>
+                            <td class="truncate-cell" title="${escapeHtml(safeName)}">${highlightSearchMatch(safeName, activeAssetSearchQuery)}</td>
                             <td>${highlightSearchMatch(asset.type || "—", activeAssetSearchQuery)}</td>
                             <td>${renderStatusBadge(asset.status || "—")}</td>
                             <td>${renderHealthIndicator(asset)}</td>
+                            <td>${renderComplianceBadgesHtml(asset)}</td>
                             <td>${highlightSearchMatch(latestServiceCostText, activeAssetSearchQuery)}</td>
-                            <td>${highlightSearchMatch(asset.vin || "—", activeAssetSearchQuery)}</td>
+                            <td class="truncate-cell" title="${escapeHtml(safeVin)}">${highlightSearchMatch(safeVin, activeAssetSearchQuery)}</td>
                             <td>${highlightSearchMatch(asset.year || "—", activeAssetSearchQuery)}</td>
                             <td>${highlightSearchMatch(asset.color || "—", activeAssetSearchQuery)}</td>
                             <td>${escapeHtml(formatDisplayDate(asset.created || asset.lastServiceDate))}</td>
@@ -2343,15 +2440,22 @@ document.addEventListener("DOMContentLoaded", function () {
                             </td>
                         </tr>`;
                 }).join("")
-                : `<tr><td colspan="${ASSETS_MODAL_COLUMNS.length}" class="empty-state-cell">No assets match this filter.</td></tr>`;
+                : `<tr><td colspan="${ASSETS_MODAL_COLUMNS.length}" class="empty-state-cell">No assets match the current filters/search. Try adjusting or resetting filters.</td></tr>`;
 
-            const modalFilterChips = DASHBOARD_FILTER_CHIPS.map(chip => `
+            const modalFilterChips = [...DASHBOARD_FILTER_CHIPS, ...ASSET_MODAL_EXTRA_FILTER_CHIPS].map(chip => `
                 <button type="button" class="filter-chip${activeAssetFilter === chip.value ? " is-active" : ""}" data-asset-filter="${chip.value}">${chip.label}</button>
             `).join("");
 
+            const activeFilterLabel = ([...DASHBOARD_FILTER_CHIPS, ...ASSET_MODAL_EXTRA_FILTER_CHIPS].find(chip => chip.value === activeAssetFilter) || {}).label || "All";
+            const hasActiveFilters = activeAssetFilter !== "all" || !!activeAssetSearchQuery || activeAssetSort !== "name";
+            const activeFiltersSummaryParts = [];
+            if (activeAssetFilter !== "all") activeFiltersSummaryParts.push(`Filter: ${activeFilterLabel}`);
+            if (activeAssetSearchQuery) activeFiltersSummaryParts.push(`Search: "${escapeHtml(activeAssetSearchQuery)}"`);
+            if (activeAssetSort !== "name") activeFiltersSummaryParts.push(`Sort: ${activeAssetSort === "next-service" ? "Next Service Date" : "Latest Cost"}`);
+
             modal.innerHTML = `
-                    <div style="background: #fff; padding: 2em; border-radius: 8px; max-width: 900px; width: 100%; position:relative">
-                        <button id="close-assets-modal" style="position:absolute;top:1em;right:1em;font-size:1.2em;">&times;</button>
+                    <div class="assets-modal-inner">
+                        <button id="close-assets-modal" class="assets-modal-close" aria-label="Close">&times;</button>
                         <h2>All Assets</h2>
                         <div class="asset-filter-chips">
                             ${modalFilterChips}
@@ -2368,6 +2472,10 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <option value="latest-cost"${activeAssetSort === "latest-cost" ? " selected" : ""}>Latest Cost (High→Low)</option>
                             </select>
                         </div>
+                        <div class="asset-active-filters-row">
+                            <span class="asset-active-filters-summary">${hasActiveFilters ? activeFiltersSummaryParts.join(" · ") : "No filters applied"}</span>
+                            <button type="button" id="asset-reset-filters"${hasActiveFilters ? "" : " disabled"}>Reset filters</button>
+                        </div>
                         <div class="asset-bulk-actions">
                             <label class="asset-select-all-toggle"><input type="checkbox" id="select-all-assets"> Select all visible</label>
                             <span id="selected-assets-count">${selectedAssetIds.size} selected</span>
@@ -2377,13 +2485,14 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <option value="Inactive">Inactive</option>
                                 <option value="Out of Service">Out of Service</option>
                             </select>
-                            <button type="button" data-bulk-action="set-status">Apply Status</button>
-                            <button type="button" data-bulk-action="export-json">Export Selected</button>
+                            <button type="button" data-bulk-action="set-status" id="assets-apply-status-btn" disabled>Apply Status</button>
+                            <button type="button" data-bulk-action="export-pdf" id="assets-export-selected-btn"${selectedAssetIds.size ? "" : " disabled"}>Export Selected (PDF)</button>
                             <button type="button" data-bulk-action="clear-selection">Clear Selection</button>
                         </div>
+                        <div class="assets-modal-alert" id="assets-modal-alert" role="alert" aria-live="assertive"></div>
                         <div class="asset-filter-summary">Showing ${filteredAssets.length} of ${assets.length} assets</div>
-                        <div style="max-height:60vh; overflow-y:auto;">
-                            <table border="1" style="width:100%;border-collapse:collapse;">
+                        <div class="assets-table-scroll">
+                            <table border="1">
                                 <thead>
                                     <tr>${tableHeaderHtml}</tr>
                                 </thead>
@@ -2395,6 +2504,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
                 `;
 
+            const setModalAlert = (message, type = "error") => {
+                const alertBox = modal.querySelector("#assets-modal-alert");
+                if (!alertBox) return;
+                alertBox.textContent = message || "";
+                alertBox.className = message ? `assets-modal-alert is-visible assets-modal-alert-${type}` : "assets-modal-alert";
+            };
+
             modal.querySelector("#close-assets-modal").addEventListener("click", () => modal.remove());
             modal.querySelectorAll("button[data-asset-filter]").forEach(btn => {
                 btn.addEventListener("click", () => renderAssetsModal(btn.getAttribute("data-asset-filter")));
@@ -2405,6 +2521,15 @@ document.addEventListener("DOMContentLoaded", function () {
             modal.querySelectorAll("button[data-delete-asset]").forEach(btn => {
                 btn.addEventListener("click", () => deleteAsset(btn.getAttribute("data-delete-asset")));
             });
+
+            const resetFiltersBtn = modal.querySelector("#asset-reset-filters");
+            if (resetFiltersBtn) {
+                resetFiltersBtn.addEventListener("click", () => {
+                    // Reset filter/search/sort only — selection (selectedAssetIds) is left untouched.
+                    activeAssetSort = "name";
+                    renderAssetsModal("all", "");
+                });
+            }
 
             const liveSearchInput = modal.querySelector("#asset-live-search");
             if (liveSearchInput) {
@@ -2428,6 +2553,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const filteredAssetIds = filteredAssets.map(({ asset }) => asset.id);
             const selectedCountNode = modal.querySelector("#selected-assets-count");
             const selectAllToggle = modal.querySelector("#select-all-assets");
+            const applyStatusBtn = modal.querySelector("#assets-apply-status-btn");
+            const exportSelectedBtn = modal.querySelector("#assets-export-selected-btn");
+            const bulkStatusSelect = modal.querySelector("#bulk-status-select");
             const updateSelectionUi = () => {
                 const selectedVisibleCount = filteredAssetIds.filter(assetId => selectedAssetIds.has(assetId)).length;
                 if (selectedCountNode) selectedCountNode.textContent = `${selectedAssetIds.size} selected`;
@@ -2435,7 +2563,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     selectAllToggle.checked = filteredAssetIds.length > 0 && selectedVisibleCount === filteredAssetIds.length;
                     selectAllToggle.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < filteredAssetIds.length;
                 }
+                if (exportSelectedBtn) exportSelectedBtn.disabled = selectedAssetIds.size === 0;
+                if (applyStatusBtn) {
+                    const hasStatus = !!(bulkStatusSelect && bulkStatusSelect.value);
+                    applyStatusBtn.disabled = selectedAssetIds.size === 0 || !hasStatus;
+                }
             };
+
+            if (bulkStatusSelect) {
+                bulkStatusSelect.addEventListener("change", updateSelectionUi);
+            }
 
             if (selectAllToggle) {
                 selectAllToggle.addEventListener("change", () => {
@@ -2460,6 +2597,7 @@ document.addEventListener("DOMContentLoaded", function () {
             modal.querySelectorAll("button[data-bulk-action]").forEach(button => {
                 button.addEventListener("click", () => {
                     const action = button.getAttribute("data-bulk-action");
+                    setModalAlert("");
                     if (action === "clear-selection") {
                         selectedAssetIds.clear();
                         renderAssetsModal(activeAssetFilter, activeAssetSearchQuery);
@@ -2467,49 +2605,80 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                     const selectedAssets = assets.filter(asset => selectedAssetIds.has(asset.id));
                     if (!selectedAssets.length) {
+                        setModalAlert("Select at least one asset before exporting or applying changes.", "error");
                         showFeedback("Select at least one asset for bulk actions.", "info");
                         return;
                     }
-                    if (action === "export-json") {
-                        const payload = JSON.stringify(selectedAssets, null, 2);
-                        const blob = new Blob([payload], { type: "application/json" });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement("a");
-                        link.href = url;
-                        link.download = "selected-assets.json";
-                        link.click();
-                        URL.revokeObjectURL(url);
-                        showFeedback(`Exported ${selectedAssets.length} assets.`, "success");
+                    if (action === "export-pdf") {
+                        const originalLabel = button.textContent;
+                        button.disabled = true;
+                        button.textContent = "Exporting…";
+                        // Deferred to allow the "Exporting…" state to paint before the
+                        // (potentially heavy, synchronous) PDF generation runs.
+                        setTimeout(() => {
+                            try {
+                                const isoDate = new Date().toISOString().slice(0, 10);
+                                exportServiceHistoryPdf(selectedAssets, {
+                                    fileName: `service-history-selected-assets-${isoDate}.pdf`
+                                });
+                                addAuditLog("Exported selected assets as PDF", `${selectedAssets.length} asset(s)`);
+                                showFeedback(`Exported ${selectedAssets.length} asset(s) as PDF.`, "success");
+                            } catch (error) {
+                                setModalAlert("Export failed. Please try again.", "error");
+                                showFeedback("Export failed. Please try again.", "error");
+                            } finally {
+                                button.disabled = selectedAssetIds.size === 0;
+                                button.textContent = originalLabel;
+                            }
+                        }, 30);
                         return;
                     }
                     if (action === "set-status") {
-                        const statusSelect = modal.querySelector("#bulk-status-select");
-                        const nextStatus = statusSelect ? statusSelect.value : "";
+                        const nextStatus = bulkStatusSelect ? bulkStatusSelect.value : "";
                         if (!nextStatus) {
+                            setModalAlert("Choose a status before applying the bulk update.", "error");
                             showFeedback("Choose a status before applying the bulk update.", "error");
                             return;
                         }
-                        const updatedAt = new Date().toISOString();
-                        const updatedAssets = assets.map(asset => {
-                            if (!selectedAssetIds.has(asset.id)) return asset;
-                            const history = Array.isArray(asset.history) ? [...asset.history] : [];
-                            history.push({
-                                date: updatedAt,
-                                operation: "Updated",
-                                label: "Status",
-                                note: `Bulk status update to ${nextStatus}`
-                            });
-                            return normalizeAsset({ ...asset, status: nextStatus, history });
-                        });
-                        saveStoredAssets(updatedAssets);
-                        refreshAssetDependentViews();
-                        showFeedback(`Updated status for ${selectedAssets.length} assets.`, "success");
-                        renderAssetsModal(activeAssetFilter, activeAssetSearchQuery);
+                        const confirmed = window.confirm(
+                            `Apply status "${nextStatus}" to ${selectedAssets.length} selected asset${selectedAssets.length === 1 ? "" : "s"}?`
+                        );
+                        if (!confirmed) return;
+
+                        const originalLabel = button.textContent;
+                        button.disabled = true;
+                        button.textContent = "Applying…";
+                        setTimeout(() => {
+                            try {
+                                const updatedAt = new Date().toISOString();
+                                const updatedAssets = assets.map(asset => {
+                                    if (!selectedAssetIds.has(asset.id)) return asset;
+                                    const history = Array.isArray(asset.history) ? [...asset.history] : [];
+                                    history.push({
+                                        date: updatedAt,
+                                        operation: "Updated",
+                                        label: "Status",
+                                        note: `Bulk status update to ${nextStatus}`
+                                    });
+                                    return normalizeAsset({ ...asset, status: nextStatus, history });
+                                });
+                                saveStoredAssets(updatedAssets);
+                                refreshAssetDependentViews();
+                                showFeedback(`Updated status for ${selectedAssets.length} assets.`, "success");
+                                renderAssetsModal(activeAssetFilter, activeAssetSearchQuery);
+                            } catch (error) {
+                                setModalAlert("Applying the bulk status update failed. Please try again.", "error");
+                                showFeedback("Bulk status update failed. Please try again.", "error");
+                                button.disabled = false;
+                                button.textContent = originalLabel;
+                            }
+                        }, 30);
                     }
                 });
             });
             updateSelectionUi();
         }
+
 
         function openEditAssetModal(assetId) {
             const assets = getStoredAssets();
@@ -2668,6 +2837,189 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (viewAllAssetsBtn) {
             viewAllAssetsBtn.addEventListener("click", () => renderAssetsModal("all"));
+        }
+
+        // --- Documente & Valabilitate (document validity manager) ---
+        function isValidDateInputValue(value) {
+            if (!value) return true; // optional field
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+            return !isNaN(new Date(value).getTime());
+        }
+
+        function renderDocumentSectionFieldsHtml(docType, entry = {}) {
+            const prefix = `doc-${docType.key}`;
+            return `
+                <fieldset class="document-fieldset" data-doc-key="${docType.key}">
+                    <legend>${escapeHtml(docType.label)} <span class="document-status-pill" id="${prefix}-status"></span></legend>
+                    ${docType.key === "licente" ? `
+                    <div class="document-field">
+                        <label for="${prefix}-license-type">License type / name</label>
+                        <input type="text" id="${prefix}-license-type" value="${escapeHtml(entry.licenseType || "")}" placeholder="e.g. Licență transport marfă">
+                    </div>` : ""}
+                    <div class="document-field">
+                        <label for="${prefix}-number">Document / policy / license number</label>
+                        <input type="text" id="${prefix}-number" value="${escapeHtml(entry.number || "")}">
+                    </div>
+                    <div class="document-field">
+                        <label for="${prefix}-expiry">Expiry date</label>
+                        <input type="date" id="${prefix}-expiry" value="${escapeHtml(entry.expiry || "")}">
+                    </div>
+                    <div class="document-field">
+                        <label for="${prefix}-notes">Notes (optional)</label>
+                        <textarea id="${prefix}-notes" rows="2">${escapeHtml(entry.notes || "")}</textarea>
+                    </div>
+                </fieldset>
+            `;
+        }
+
+        function updateDocumentStatusPills(modal, asset) {
+            getAssetComplianceSummary(asset).statuses.forEach(item => {
+                const pill = modal.querySelector(`#doc-${item.key}-status`);
+                if (!pill) return;
+                pill.textContent = item.status.label;
+                pill.className = `document-status-pill status-${item.status.state}`;
+            });
+        }
+
+        let documentsModalAssetId = "";
+
+        function renderDocumentsModal(preselectAssetId) {
+            let modal = document.getElementById("documents-modal");
+            if (!modal) {
+                modal = document.createElement("div");
+                modal.id = "documents-modal";
+                modal.style.position = "fixed";
+                modal.style.top = "0";
+                modal.style.left = "0";
+                modal.style.width = "100vw";
+                modal.style.height = "100vh";
+                modal.style.background = "rgba(0,0,0,0.5)";
+                modal.style.display = "flex";
+                modal.style.alignItems = "center";
+                modal.style.justifyContent = "center";
+                modal.style.zIndex = "2200";
+                modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
+                document.body.appendChild(modal);
+            }
+
+            const assets = getStoredAssets();
+            if (preselectAssetId !== undefined) documentsModalAssetId = preselectAssetId || "";
+            if (documentsModalAssetId && !assets.some(asset => asset.id === documentsModalAssetId)) {
+                documentsModalAssetId = "";
+            }
+            const selectedAsset = assets.find(asset => asset.id === documentsModalAssetId) || null;
+
+            const optionsHtml = `<option value="">Select a vehicle…</option>` + assets.map(asset =>
+                `<option value="${escapeHtml(asset.id)}"${asset.id === documentsModalAssetId ? " selected" : ""}>${escapeHtml(asset.name || "Unnamed Asset")}</option>`
+            ).join("");
+
+            const bodyHtml = selectedAsset
+                ? `
+                    <div class="document-alert" id="documents-modal-alert" role="alert" aria-live="assertive"></div>
+                    <form id="documents-form">
+                        ${DOCUMENT_TYPES.map(docType => renderDocumentSectionFieldsHtml(docType, (selectedAsset.documents || {})[docType.key] || {})).join("")}
+                        <div class="document-form-actions">
+                            <button type="submit">Save</button>
+                            <button type="button" id="documents-form-clear">Clear</button>
+                        </div>
+                    </form>
+                `
+                : `<div class="documents-empty-state">Select a vehicle to view and manage its Rovinietă, RCA, ITP, and Licențe validity.</div>`;
+
+            modal.innerHTML = `
+                <div class="documents-modal-inner">
+                    <button id="close-documents-modal" class="documents-modal-close" aria-label="Close">&times;</button>
+                    <h2>Documente &amp; Valabilitate</h2>
+                    <p class="documents-modal-desc">Track validity for Rovinietă, RCA/Insurance, ITP and Licențe per vehicle.</p>
+                    <div class="document-field">
+                        <label for="documents-asset-select">Vehicle</label>
+                        <select id="documents-asset-select">${optionsHtml}</select>
+                    </div>
+                    ${bodyHtml}
+                </div>
+            `;
+
+            modal.querySelector("#close-documents-modal").addEventListener("click", () => modal.remove());
+            modal.querySelector("#documents-asset-select").addEventListener("change", (e) => {
+                renderDocumentsModal(e.target.value);
+            });
+
+            if (selectedAsset) {
+                updateDocumentStatusPills(modal, selectedAsset);
+                const form = modal.querySelector("#documents-form");
+                const alertBox = modal.querySelector("#documents-modal-alert");
+                const setAlert = (message, type = "error") => {
+                    if (!alertBox) return;
+                    alertBox.textContent = message || "";
+                    alertBox.className = message ? `document-alert is-visible document-alert-${type}` : "document-alert";
+                };
+
+                form.addEventListener("submit", (e) => {
+                    e.preventDefault();
+                    const values = {};
+                    let hasError = false;
+                    DOCUMENT_TYPES.forEach(docType => {
+                        const prefix = `doc-${docType.key}`;
+                        const expiryInput = form.querySelector(`#${prefix}-expiry`);
+                        const expiry = expiryInput ? expiryInput.value : "";
+                        if (!isValidDateInputValue(expiry)) {
+                            hasError = true;
+                            setAlert(`Please enter a valid expiry date for ${docType.label}.`, "error");
+                        }
+                        const numberInput = form.querySelector(`#${prefix}-number`);
+                        const notesInput = form.querySelector(`#${prefix}-notes`);
+                        values[docType.key] = {
+                            number: numberInput ? numberInput.value.trim() : "",
+                            expiry,
+                            notes: notesInput ? notesInput.value.trim() : ""
+                        };
+                        if (docType.key === "licente") {
+                            const licenseTypeInput = form.querySelector(`#${prefix}-license-type`);
+                            values[docType.key].licenseType = licenseTypeInput ? licenseTypeInput.value.trim() : "";
+                        }
+                    });
+                    if (hasError) return;
+
+                    const latestAssets = getStoredAssets();
+                    const idx = latestAssets.findIndex(asset => asset.id === selectedAsset.id);
+                    if (idx === -1) {
+                        setAlert("This vehicle no longer exists.", "error");
+                        return;
+                    }
+                    const updatedAt = new Date().toISOString();
+                    const history = Array.isArray(latestAssets[idx].history) ? [...latestAssets[idx].history] : [];
+                    history.push({ date: updatedAt, operation: "Updated", label: "Documente & Valabilitate", note: "Document validity updated" });
+                    latestAssets[idx] = normalizeAsset({ ...latestAssets[idx], documents: values, history });
+                    saveStoredAssets(latestAssets);
+                    refreshAssetDependentViews();
+                    addAuditLog("Document validity updated", `Asset: ${escapeHtml(latestAssets[idx].name || "")}`);
+                    showFeedback("Document validity saved.", "success");
+                    renderDocumentsModal(selectedAsset.id);
+                });
+
+                const clearBtn = modal.querySelector("#documents-form-clear");
+                if (clearBtn) {
+                    clearBtn.addEventListener("click", () => {
+                        DOCUMENT_TYPES.forEach(docType => {
+                            const prefix = `doc-${docType.key}`;
+                            ["number", "expiry", "notes", "license-type"].forEach(suffix => {
+                                const input = form.querySelector(`#${prefix}-${suffix}`);
+                                if (input) input.value = "";
+                            });
+                        });
+                        setAlert("");
+                    });
+                }
+            }
+        }
+
+        const openDocumentsValidityLink = document.getElementById("open-documents-validity");
+        if (openDocumentsValidityLink) {
+            openDocumentsValidityLink.addEventListener("click", (e) => {
+                e.preventDefault();
+                const preselect = selectedAssetIds.size === 1 ? [...selectedAssetIds][0] : "";
+                renderDocumentsModal(preselect);
+            });
         }
 
 
@@ -3581,7 +3933,10 @@ document.addEventListener("DOMContentLoaded", function () {
               serviceCost: raw.serviceCost || '',
               serviceCurrency: raw.serviceCurrency || '',
               attachedFile: raw.attachedFile !== undefined ? raw.attachedFile : null,
-              history: Array.isArray(raw.history) ? raw.history : []
+              history: Array.isArray(raw.history) ? raw.history : [],
+              // Preserved as-is (not edited from this popup) so document validity data
+              // entered via "Documente & Valabilitate" is never lost when a service is saved here.
+              documents: raw.documents && typeof raw.documents === 'object' ? raw.documents : undefined
             };
           }
           function renderAxleSideHtml(container, serviceId) {
