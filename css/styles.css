@@ -382,14 +382,20 @@ nav {
   border: 1px solid #c4d2e3;
   background: #ffffff;
   color: #1d456a;
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 0.8rem;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
   cursor: pointer;
+  box-shadow: none;
+  min-height: 28px;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .reminder-actions button:hover {
   background: #eff5ff;
+  transform: none;
+  box-shadow: none;
 }
 
 /*Recent Activity Section */
@@ -758,19 +764,28 @@ h3 {
 button {
   background-color: #0078d4;
   color: white;
-  border: none;
+  border: 1px solid transparent;
   margin-bottom: 2px;
-  padding: 9px 14px;
-  border-radius: 5px;
+  padding: 9px 18px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
   font-size: 0.95rem;
+  font-weight: 500;
   line-height: 1.2;
   min-height: 36px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06);
 }
 
 button:hover {
   background-color: #005a9e;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10);
 }
 
 .print-button {
@@ -2524,15 +2539,19 @@ body.settings-modal-open {
   background: #0078d4;
   color: #fff;
   border: none;
-  padding: 8px 22px;
-  border-radius: 5px;
+  padding: 9px 22px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 0.93rem;
-  transition: background 0.15s;
+  font-weight: 500;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10);
 }
 
 .btn-close-modal:hover {
   background: #005a9e;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.14);
+  transform: translateY(-1px);
 }
 
 /* Dark mode: settings modal */
@@ -3000,4 +3019,137 @@ body.settings-modal-open {
 [data-theme="midnight-violet"] .settings-toggle-list,
 [data-theme="deep-navy"] .settings-toggle-list {
   border-color: var(--th-card-border);
+}
+/* ============================================================
+   EXTENDED THEME COVERAGE
+   Keep content surfaces, controls, and dialogs in sync with the
+   selected named theme instead of only recoloring the shell.
+   ============================================================ */
+body[data-theme] section,
+body[data-theme] .welcome-section,
+body[data-theme] .quick-actions,
+body[data-theme] .global-search,
+body[data-theme] .recent-activities,
+body[data-theme] .upcoming-reminders,
+body[data-theme] .quick-statistics,
+body[data-theme] .analytics-page .data-visualization,
+body[data-theme] .analytics-page .predictive-maintenance,
+body[data-theme] .collaboration-page,
+body[data-theme] .team-roles,
+body[data-theme] .comments-and-notes,
+body[data-theme] .report-section,
+body[data-theme] .stat-item,
+body[data-theme] .service-cost-card,
+body[data-theme] .activity-item,
+body[data-theme] .reminder-group,
+body[data-theme] .asset-filter-summary,
+body[data-theme] .chart-placeholder {
+  background: var(--th-card-bg, #fff);
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] h1,
+body[data-theme] h2,
+body[data-theme] h3,
+body[data-theme] h4,
+body[data-theme] p,
+body[data-theme] li,
+body[data-theme] label,
+body[data-theme] strong,
+body[data-theme] td,
+body[data-theme] th {
+  color: var(--th-text, #333);
+}
+
+body[data-theme] a {
+  color: var(--th-link, #0078d4);
+}
+
+body[data-theme] button:not(.theme-swatch-btn):not(.settings-modal-x),
+body[data-theme] .import-button {
+  background: var(--th-btn-bg, #0078d4);
+  color: var(--th-btn-text, #fff);
+  border-color: var(--th-btn-bg, #0078d4);
+}
+
+body[data-theme] button:not(.theme-swatch-btn):not(.settings-modal-x):hover,
+body[data-theme] .import-button:hover {
+  background: var(--th-accent, #005a9e);
+  border-color: var(--th-accent, #005a9e);
+}
+
+body[data-theme] input:not([type="checkbox"]):not([type="radio"]),
+body[data-theme] select,
+body[data-theme] textarea {
+  background: var(--th-card-bg, #fff);
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #c0cad8);
+}
+
+body[data-theme] input::placeholder,
+body[data-theme] textarea::placeholder {
+  color: var(--th-text, #556);
+  opacity: 0.65;
+}
+
+body[data-theme] table {
+  color: var(--th-text, #333);
+}
+
+body[data-theme] table th {
+  background: var(--th-nav-bg, #005a9e);
+  color: var(--th-nav-text, #fff);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] table td {
+  background: var(--th-card-bg, #fff);
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] .settings-modal-backdrop,
+body[data-theme] #reports-overlay {
+  background: color-mix(in srgb, var(--th-body-bg, #000) 55%, #000 45%);
+}
+
+body[data-theme] #add-asset-modal > div,
+body[data-theme] #view-assets-modal > div,
+body[data-theme] #edit-asset-modal > div,
+body[data-theme] #asset-history-modal > div,
+body[data-theme] #edit-history-modal > div,
+body[data-theme] #preferences-modal > div,
+body[data-theme] .asset-detail-modal-inner {
+  background: var(--th-card-bg, #fff) !important;
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] .asset-detail-header {
+  background: var(--th-header-bg, #0078d4);
+  color: var(--th-header-text, #fff);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+/* High contrast is independent of the selected color palette. */
+body.high-contrast {
+  --hc-focus: #ffbf00;
+  filter: contrast(1.15);
+}
+
+body.high-contrast button,
+body.high-contrast input,
+body.high-contrast select,
+body.high-contrast textarea,
+body.high-contrast a {
+  outline-offset: 2px;
+}
+
+body.high-contrast button:focus-visible,
+body.high-contrast input:focus-visible,
+body.high-contrast select:focus-visible,
+body.high-contrast textarea:focus-visible,
+body.high-contrast a:focus-visible {
+  outline: 3px solid var(--hc-focus);
 }
