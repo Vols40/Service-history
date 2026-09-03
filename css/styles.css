@@ -15,6 +15,13 @@
   --nav-focus: #ffbf00;
   --nav-hover-bg: #0078d4;
   --nav-active-bg: #003f6f;
+
+  /* Stacking order (lowest to highest) shared by every layer of the app */
+  --z-navbar: 500;
+  --z-dropdown: 550;
+  --z-fab: 600;
+  --z-modal-backdrop: 900;
+  --z-modal-panel: 901;
 }
 
 body {
@@ -27,6 +34,12 @@ body {
 }
 
 /* Header Styling */
+header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-navbar);
+}
+
 .header-container {
   display: flex;
   justify-content: space-between;
@@ -162,7 +175,7 @@ nav {
   padding: 10px;
   margin-top: 0;
   border-radius: 5px;
-  z-index: 10;
+  z-index: var(--z-dropdown);
   min-width: 200px;
   white-space: nowrap;
 }
@@ -213,7 +226,7 @@ nav {
   background-color: #005a9e;
   border-radius: 5px;
   padding: 8px;
-  z-index: 12;
+  z-index: calc(var(--z-dropdown) + 2);
 }
 
 .dropdown-submenu:hover .dropdown-submenu-items,
@@ -1061,13 +1074,11 @@ table td {
 
 #audit-logs,
 .report-section,
-#view-assets-modal > div,
 #asset-history-modal > div {
   overflow-x: auto;
 }
 
 #add-asset-modal,
-#view-assets-modal,
 #edit-asset-modal,
 #asset-history-modal,
 #preferences-modal {
@@ -1075,7 +1086,6 @@ table td {
 }
 
 #add-asset-modal > div,
-#view-assets-modal > div,
 #edit-asset-modal > div,
 #asset-history-modal > div,
 #preferences-modal > div {
@@ -1291,6 +1301,7 @@ table td {
   position: fixed;
   bottom: 20px;
   right: 20px;
+  z-index: var(--z-fab);
   background-color: #0078d4;
   color: white;
   border: none;
@@ -1980,7 +1991,6 @@ body.dark-mode {
 }
 
 .dark-mode #add-asset-modal > div,
-.dark-mode #view-assets-modal > div,
 .dark-mode #edit-asset-modal > div,
 .dark-mode #asset-history-modal > div,
 .dark-mode #edit-history-modal > div,
@@ -2526,7 +2536,7 @@ body.settings-modal-open {
   display: none;
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-modal-backdrop);
   align-items: center;
   justify-content: center;
 }
@@ -2543,7 +2553,7 @@ body.settings-modal-open {
 
 .settings-modal-panel {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-modal-panel);
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
@@ -2637,6 +2647,283 @@ body.settings-modal-open {
 
 .dark-mode .settings-modal-footer {
   border-top-color: #2d3a49;
+}
+
+/* ============================================================
+   SHARED MODAL SHELL (backdrop + centered panel + header/body/footer)
+   Used by "All Assets" and "Documente & Valabilitate" so every major
+   modal in the app shares the same layered architecture.
+   ============================================================ */
+body.modal-open-lock {
+  overflow: hidden;
+}
+
+.app-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.app-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.app-modal-panel {
+  position: relative;
+  z-index: var(--z-modal-panel);
+  width: min(980px, 94vw);
+  max-height: 88vh;
+  background: #fff;
+  border: 1px solid #d7e2ef;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  padding: 0.9rem 1.25rem;
+  background: #0078d4;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.app-modal-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+.app-modal-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 4px;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.app-modal-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.app-modal-close:focus-visible {
+  outline: 3px solid var(--nav-focus);
+  outline-offset: 1px;
+}
+
+.app-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.4rem;
+}
+
+.app-modal-desc {
+  margin: 0 0 1em;
+  color: #526173;
+  font-size: 0.92rem;
+}
+
+.app-modal-footer {
+  padding: 0.75rem 1.4rem 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6em;
+  border-top: 1px solid #e8f0f7;
+  flex-shrink: 0;
+}
+
+.dark-mode .app-modal-panel {
+  background: #1a2330;
+  border-color: #2d3a49;
+  color: #d6dde6;
+}
+
+.dark-mode .app-modal-desc {
+  color: #9cb0c4;
+}
+
+.dark-mode .app-modal-footer {
+  border-top-color: #2d3a49;
+}
+
+body[data-theme] .app-modal-backdrop {
+  background: color-mix(in srgb, var(--th-body-bg, #000) 55%, #000 45%);
+}
+
+body[data-theme] .app-modal-panel {
+  background: var(--th-card-bg, #fff) !important;
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] .app-modal-desc {
+  color: var(--th-text, #556);
+  opacity: 0.85;
+}
+
+/* ---- Document validity manager (fieldsets, alerts, status pills) ---- */
+.document-fieldset {
+  border: 1px solid #d7e2ef;
+  border-radius: 8px;
+  padding: 1em 1.2em 1.2em;
+  margin: 0 0 1.2em;
+}
+
+.document-fieldset legend {
+  padding: 0 0.4em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+}
+
+.document-field {
+  margin-bottom: 0.9em;
+}
+
+.document-field:last-child {
+  margin-bottom: 0;
+}
+
+.document-field label {
+  display: block;
+  margin-bottom: 0.35em;
+  font-weight: 500;
+  font-size: 0.92rem;
+}
+
+.document-field input,
+.document-field select,
+.document-field textarea {
+  width: 100%;
+  padding: 0.55em 0.6em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.document-status-pill {
+  display: inline-block;
+  padding: 0.15em 0.7em;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #e2e8f0;
+  color: #33475b;
+}
+
+.document-status-pill.status-expired {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.document-status-pill.status-expiring {
+  background: #fff3cd;
+  color: #664d03;
+}
+
+.document-status-pill.status-valid {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.documents-empty-state {
+  color: #526173;
+  font-style: italic;
+  padding: 1em 0;
+}
+
+.document-alert,
+.assets-modal-alert {
+  display: none;
+  padding: 0.6em 0.9em;
+  border-radius: 6px;
+  margin-bottom: 1em;
+  font-size: 0.9rem;
+}
+
+.document-alert.is-visible,
+.assets-modal-alert.is-visible {
+  display: block;
+}
+
+.document-alert-error,
+.assets-modal-alert-error {
+  background: #f8d7da;
+  color: #842029;
+  border: 1px solid #f1aeb5;
+}
+
+.document-alert-success,
+.assets-modal-alert-success {
+  background: #d1e7dd;
+  color: #0f5132;
+  border: 1px solid #a3cfbb;
+}
+
+.asset-active-filters-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8em;
+  flex-wrap: wrap;
+  margin: 0.6em 0;
+  font-size: 0.9rem;
+}
+
+.assets-table-scroll {
+  overflow-x: auto;
+}
+
+.dark-mode .document-fieldset {
+  border-color: #2d3a49;
+}
+
+.dark-mode .document-field input,
+.dark-mode .document-field select,
+.dark-mode .document-field textarea {
+  background: #17202a;
+  color: #d6dde6;
+  border-color: #2d3a49;
+}
+
+.dark-mode .documents-empty-state {
+  color: #9cb0c4;
+}
+
+body[data-theme] .document-fieldset {
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] .document-field input,
+body[data-theme] .document-field select,
+body[data-theme] .document-field textarea {
+  background: var(--th-card-bg, #fff);
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] .documents-empty-state {
+  color: var(--th-text, #556);
+  opacity: 0.85;
 }
 
 /* ============================================================
@@ -3230,7 +3517,6 @@ body[data-theme] table td {
 body[data-theme] .settings-modal-backdrop,
 body[data-theme] #reports-overlay,
 body[data-theme] #add-asset-modal,
-body[data-theme] #view-assets-modal,
 body[data-theme] #edit-asset-modal,
 body[data-theme] #asset-history-modal,
 body[data-theme] #edit-history-modal,
@@ -3253,7 +3539,6 @@ body[data-theme] .report-section li {
 }
 
 body[data-theme] #add-asset-modal > div,
-body[data-theme] #view-assets-modal > div,
 body[data-theme] #edit-asset-modal > div,
 body[data-theme] #asset-history-modal > div,
 body[data-theme] #edit-history-modal > div,

@@ -10,6 +10,51 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
+        // --- Shared modal lifecycle: body scroll lock, ESC-to-close, focus return ---
+        // Attach once per dynamically created modal wrapper so every modal (all
+        // major modals: Add/Edit Asset, All Assets, Documente & Valabilitate,
+        // Asset History, Preferences, Settings) closes consistently on ESC or
+        // backdrop click, locks page scroll while open, and returns focus to the
+        // element that triggered it once the modal is removed from the DOM.
+        function lockBodyScroll() {
+            const count = (Number(document.body.dataset.modalLockCount) || 0) + 1;
+            document.body.dataset.modalLockCount = String(count);
+            document.body.classList.add("modal-open-lock");
+        }
+
+        function unlockBodyScroll() {
+            const count = Math.max(0, (Number(document.body.dataset.modalLockCount) || 1) - 1);
+            document.body.dataset.modalLockCount = String(count);
+            if (count === 0) document.body.classList.remove("modal-open-lock");
+        }
+
+        function attachModalLifecycle(modal, triggerElement) {
+            if (!modal || modal.dataset.lifecycleAttached === "1") return;
+            modal.dataset.lifecycleAttached = "1";
+            lockBodyScroll();
+            const elementToRefocus = triggerElement || document.activeElement;
+
+            function handleKeydown(e) {
+                if (e.key === "Escape") {
+                    e.stopPropagation();
+                    modal.remove();
+                }
+            }
+            document.addEventListener("keydown", handleKeydown, true);
+
+            const observer = new MutationObserver(() => {
+                if (!document.body.contains(modal)) {
+                    observer.disconnect();
+                    document.removeEventListener("keydown", handleKeydown, true);
+                    unlockBodyScroll();
+                    if (elementToRefocus && typeof elementToRefocus.focus === "function" && document.body.contains(elementToRefocus)) {
+                        elementToRefocus.focus();
+                    }
+                }
+            });
+            observer.observe(document.body, { childList: true });
+        }
+
 
         //---App Preferences & Upcoming Reminders---
         const APP_PREFS_KEY = "serviceAppPreferences";
@@ -1127,6 +1172,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (event.target === modal) modal.remove();
                 });
                 document.body.appendChild(modal);
+                attachModalLifecycle(modal, openPreferencesBtn);
             }
 
             const preferences = getAppPreferences();
@@ -1813,10 +1859,12 @@ document.addEventListener("DOMContentLoaded", function () {
             theme: { sectionId: "theme-appearance", title: "Theme and Appearance" },
             audit: { sectionId: "audit-logs", title: "Audit Logs" }
         };
+        let settingsModalTriggerElement = null;
 
         function openSettingsModal(panelKey, titleOverride) {
             const config = settingsPanelMap[panelKey];
             if (!config || !settingsModal) return;
+            settingsModalTriggerElement = document.activeElement;
             // Hide all sections inside the modal body, then show the requested one
             settingsModal.querySelectorAll(".settings-section").forEach(sec => sec.classList.remove("is-active"));
             const target = document.getElementById(config.sectionId);
@@ -1835,6 +1883,10 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!settingsModal) return;
             settingsModal.classList.remove("is-open");
             document.body.classList.remove("settings-modal-open");
+            if (settingsModalTriggerElement && typeof settingsModalTriggerElement.focus === "function" && document.body.contains(settingsModalTriggerElement)) {
+                settingsModalTriggerElement.focus();
+            }
+            settingsModalTriggerElement = null;
         }
 
         // Settings dropdown links
@@ -2317,6 +2369,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
                 `;
                     document.body.appendChild(modal);
+                    attachModalLifecycle(modal, addNewAssetBtn);
 
                     modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
                     modal.querySelector("#close-asset-modal").addEventListener("click", () => modal.remove());
@@ -2364,18 +2417,13 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!modal) {
                 modal = document.createElement("div");
                 modal.id = "view-assets-modal";
-                modal.style.position = "fixed";
-                modal.style.top = "0";
-                modal.style.left = "0";
-                modal.style.width = "100vw";
-                modal.style.height = "100vh";
-                modal.style.background = "rgba(0,0,0,0.5)";
-                modal.style.display = "flex";
-                modal.style.alignItems = "center";
-                modal.style.justifyContent = "center";
-                modal.style.zIndex = "1000";
-                modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
+                modal.className = "app-modal-overlay";
+                modal.setAttribute("role", "dialog");
+                modal.setAttribute("aria-modal", "true");
+                modal.setAttribute("aria-labelledby", "view-assets-modal-title");
+                modal.addEventListener("click", (e) => { if (e.target.closest("[data-modal-dismiss]")) modal.remove(); });
                 document.body.appendChild(modal);
+                attachModalLifecycle(modal, viewAllAssetsBtn);
             }
 
             activeAssetFilter = filter || "all";
@@ -2454,52 +2502,57 @@ document.addEventListener("DOMContentLoaded", function () {
             if (activeAssetSort !== "name") activeFiltersSummaryParts.push(`Sort: ${activeAssetSort === "next-service" ? "Next Service Date" : "Latest Cost"}`);
 
             modal.innerHTML = `
-                    <div class="assets-modal-inner">
-                        <button id="close-assets-modal" class="assets-modal-close" aria-label="Close">&times;</button>
-                        <h2>All Assets</h2>
-                        <div class="asset-filter-chips">
-                            ${modalFilterChips}
+                    <div class="app-modal-backdrop" data-modal-dismiss></div>
+                    <div class="app-modal-panel">
+                        <div class="app-modal-header">
+                            <h2 class="app-modal-title" id="view-assets-modal-title">All Assets</h2>
+                            <button id="close-assets-modal" class="app-modal-close" aria-label="Close">&times;</button>
                         </div>
-                        <div class="asset-live-search-row">
-                            <input type="search" id="asset-live-search" placeholder="Live search assets..." value="${escapeHtml(activeAssetSearchQuery)}">
-                            <button type="button" id="asset-search-clear">Clear</button>
-                        </div>
-                        <div class="asset-sort-row">
-                            <label for="asset-sort-select">Sort:</label>
-                            <select id="asset-sort-select">
-                                <option value="name"${activeAssetSort === "name" ? " selected" : ""}>Name (A–Z)</option>
-                                <option value="next-service"${activeAssetSort === "next-service" ? " selected" : ""}>Next Service Date</option>
-                                <option value="latest-cost"${activeAssetSort === "latest-cost" ? " selected" : ""}>Latest Cost (High→Low)</option>
-                            </select>
-                        </div>
-                        <div class="asset-active-filters-row">
-                            <span class="asset-active-filters-summary">${hasActiveFilters ? activeFiltersSummaryParts.join(" · ") : "No filters applied"}</span>
-                            <button type="button" id="asset-reset-filters"${hasActiveFilters ? "" : " disabled"}>Reset filters</button>
-                        </div>
-                        <div class="asset-bulk-actions">
-                            <label class="asset-select-all-toggle"><input type="checkbox" id="select-all-assets"> Select all visible</label>
-                            <span id="selected-assets-count">${selectedAssetIds.size} selected</span>
-                            <select id="bulk-status-select">
-                                <option value="">Bulk status…</option>
-                                <option value="Active">Active</option>
-                                <option value="Inactive">Inactive</option>
-                                <option value="Out of Service">Out of Service</option>
-                            </select>
-                            <button type="button" data-bulk-action="set-status" id="assets-apply-status-btn" disabled>Apply Status</button>
-                            <button type="button" data-bulk-action="export-pdf" id="assets-export-selected-btn"${selectedAssetIds.size ? "" : " disabled"}>Export Selected (PDF)</button>
-                            <button type="button" data-bulk-action="clear-selection">Clear Selection</button>
-                        </div>
-                        <div class="assets-modal-alert" id="assets-modal-alert" role="alert" aria-live="assertive"></div>
-                        <div class="asset-filter-summary">Showing ${filteredAssets.length} of ${assets.length} assets</div>
-                        <div class="assets-table-scroll">
-                            <table border="1">
-                                <thead>
-                                    <tr>${tableHeaderHtml}</tr>
-                                </thead>
-                                <tbody>
-                                    ${tableRows}
-                                </tbody>
-                            </table>
+                        <div class="app-modal-body">
+                            <div class="asset-filter-chips">
+                                ${modalFilterChips}
+                            </div>
+                            <div class="asset-live-search-row">
+                                <input type="search" id="asset-live-search" placeholder="Live search assets..." value="${escapeHtml(activeAssetSearchQuery)}">
+                                <button type="button" id="asset-search-clear">Clear</button>
+                            </div>
+                            <div class="asset-sort-row">
+                                <label for="asset-sort-select">Sort:</label>
+                                <select id="asset-sort-select">
+                                    <option value="name"${activeAssetSort === "name" ? " selected" : ""}>Name (A–Z)</option>
+                                    <option value="next-service"${activeAssetSort === "next-service" ? " selected" : ""}>Next Service Date</option>
+                                    <option value="latest-cost"${activeAssetSort === "latest-cost" ? " selected" : ""}>Latest Cost (High→Low)</option>
+                                </select>
+                            </div>
+                            <div class="asset-active-filters-row">
+                                <span class="asset-active-filters-summary">${hasActiveFilters ? activeFiltersSummaryParts.join(" · ") : "No filters applied"}</span>
+                                <button type="button" id="asset-reset-filters"${hasActiveFilters ? "" : " disabled"}>Reset filters</button>
+                            </div>
+                            <div class="asset-bulk-actions">
+                                <label class="asset-select-all-toggle"><input type="checkbox" id="select-all-assets"> Select all visible</label>
+                                <span id="selected-assets-count">${selectedAssetIds.size} selected</span>
+                                <select id="bulk-status-select">
+                                    <option value="">Bulk status…</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="Out of Service">Out of Service</option>
+                                </select>
+                                <button type="button" data-bulk-action="set-status" id="assets-apply-status-btn" disabled>Apply Status</button>
+                                <button type="button" data-bulk-action="export-pdf" id="assets-export-selected-btn"${selectedAssetIds.size ? "" : " disabled"}>Export Selected (PDF)</button>
+                                <button type="button" data-bulk-action="clear-selection">Clear Selection</button>
+                            </div>
+                            <div class="assets-modal-alert" id="assets-modal-alert" role="alert" aria-live="assertive"></div>
+                            <div class="asset-filter-summary">Showing ${filteredAssets.length} of ${assets.length} assets</div>
+                            <div class="assets-table-scroll">
+                                <table border="1">
+                                    <thead>
+                                        <tr>${tableHeaderHtml}</tr>
+                                    </thead>
+                                    <tbody>
+                                        ${tableRows}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -2749,6 +2802,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
             `;
             document.body.appendChild(editModal);
+            attachModalLifecycle(editModal);
 
             editModal.querySelector("#close-edit-asset-modal").addEventListener("click", () => editModal.remove());
             editModal.addEventListener("click", (e) => { if (e.target === editModal) editModal.remove(); });
@@ -2888,18 +2942,13 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!modal) {
                 modal = document.createElement("div");
                 modal.id = "documents-modal";
-                modal.style.position = "fixed";
-                modal.style.top = "0";
-                modal.style.left = "0";
-                modal.style.width = "100vw";
-                modal.style.height = "100vh";
-                modal.style.background = "rgba(0,0,0,0.5)";
-                modal.style.display = "flex";
-                modal.style.alignItems = "center";
-                modal.style.justifyContent = "center";
-                modal.style.zIndex = "2200";
-                modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
+                modal.className = "app-modal-overlay";
+                modal.setAttribute("role", "dialog");
+                modal.setAttribute("aria-modal", "true");
+                modal.setAttribute("aria-labelledby", "documents-modal-title");
+                modal.addEventListener("click", (e) => { if (e.target.closest("[data-modal-dismiss]")) modal.remove(); });
                 document.body.appendChild(modal);
+                attachModalLifecycle(modal, openDocumentsValidityLink);
             }
 
             const assets = getStoredAssets();
@@ -2918,24 +2967,35 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div class="document-alert" id="documents-modal-alert" role="alert" aria-live="assertive"></div>
                     <form id="documents-form">
                         ${DOCUMENT_TYPES.map(docType => renderDocumentSectionFieldsHtml(docType, (selectedAsset.documents || {})[docType.key] || {})).join("")}
-                        <div class="document-form-actions">
-                            <button type="submit">Save</button>
-                            <button type="button" id="documents-form-clear">Clear</button>
-                        </div>
                     </form>
                 `
                 : `<div class="documents-empty-state">Select a vehicle to view and manage its Rovinietă, RCA, ITP, and Licențe validity.</div>`;
 
-            modal.innerHTML = `
-                <div class="documents-modal-inner">
-                    <button id="close-documents-modal" class="documents-modal-close" aria-label="Close">&times;</button>
-                    <h2>Documente &amp; Valabilitate</h2>
-                    <p class="documents-modal-desc">Track validity for Rovinietă, RCA/Insurance, ITP and Licențe per vehicle.</p>
-                    <div class="document-field">
-                        <label for="documents-asset-select">Vehicle</label>
-                        <select id="documents-asset-select">${optionsHtml}</select>
+            const footerHtml = selectedAsset
+                ? `
+                    <div class="app-modal-footer">
+                        <button type="button" id="documents-form-clear">Clear</button>
+                        <button type="submit" form="documents-form">Save</button>
                     </div>
-                    ${bodyHtml}
+                `
+                : "";
+
+            modal.innerHTML = `
+                <div class="app-modal-backdrop" data-modal-dismiss></div>
+                <div class="app-modal-panel">
+                    <div class="app-modal-header">
+                        <h2 class="app-modal-title" id="documents-modal-title">Documente &amp; Valabilitate</h2>
+                        <button id="close-documents-modal" class="app-modal-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="app-modal-body">
+                        <p class="app-modal-desc">Track validity for Rovinietă, RCA/Insurance, ITP and Licențe per vehicle.</p>
+                        <div class="document-field">
+                            <label for="documents-asset-select">Vehicle</label>
+                            <select id="documents-asset-select">${optionsHtml}</select>
+                        </div>
+                        ${bodyHtml}
+                    </div>
+                    ${footerHtml}
                 </div>
             `;
 
@@ -3372,6 +3432,7 @@ document.addEventListener("DOMContentLoaded", function () {
         `;
 
             document.body.appendChild(modal);
+            attachModalLifecycle(modal);
 
             // PDF EXPORT BUTTON
             const exportBtn = modal.querySelector("#export-service-history-pdf");
@@ -3478,6 +3539,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
             `;
                 document.body.appendChild(editModal);
+                attachModalLifecycle(editModal);
                 editModal.querySelector("#close-edit-history").addEventListener("click", () => editModal.remove());
                 editModal.addEventListener("click", (e) => { if (e.target === editModal) editModal.remove(); });
                 editModal.querySelector("#edit-history-form").addEventListener("submit", (e) => {
