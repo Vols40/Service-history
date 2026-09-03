@@ -3020,7 +3020,6 @@ body.settings-modal-open {
 [data-theme="deep-navy"] .settings-toggle-list {
   border-color: var(--th-card-border);
 }
-
 /* ============================================================
    EXTENDED THEME COVERAGE
    Keep content surfaces, controls, and dialogs in sync with the
