@@ -12,6 +12,9 @@
   --table-min-width-mobile: 540px;
   --quick-stat-card-bg: #fff8df;
   --quick-stat-card-hover-bg: #f5ebc8;
+  --nav-focus: #ffbf00;
+  --nav-hover-bg: #0078d4;
+  --nav-active-bg: #003f6f;
 }
 
 body {
@@ -128,8 +131,21 @@ nav {
   min-height: 36px;
 }
 
-.nav-links a:hover {
-  background-color: #0078d4;
+.nav-links a:hover,
+.nav-links a:focus {
+  background-color: var(--nav-hover-bg);
+  color: #fff;
+}
+
+.nav-links a:focus-visible {
+  outline: 3px solid var(--nav-focus);
+  outline-offset: 1px;
+}
+
+.nav-links a:active,
+.nav-links li > a[aria-current="page"] {
+  background-color: var(--nav-active-bg);
+  color: #fff;
 }
 .dropdown {
   position: relative; /* Ensure the dropdown menu is positioned relative to the parent nav item */
@@ -168,8 +184,20 @@ nav {
   border-radius: 5px;
 }
 
-.dropdown-menu a:hover {
-  background-color: #0078d4;
+.dropdown-menu a:hover,
+.dropdown-menu a:focus {
+  background-color: var(--nav-hover-bg);
+  color: #fff;
+}
+
+.dropdown-menu a:focus-visible {
+  outline: 3px solid var(--nav-focus);
+  outline-offset: 1px;
+}
+
+.dropdown-menu a:active {
+  background-color: var(--nav-active-bg);
+  color: #fff;
 }
 
 .dropdown-submenu {
@@ -201,6 +229,13 @@ nav {
 .dropdown-submenu-items .import-button,
 .dropdown-submenu-items button {
   width: 100%;
+}
+
+.dropdown-submenu-items a:focus-visible,
+.dropdown-submenu-items .import-button:focus-visible,
+.dropdown-submenu-items button:focus-visible {
+  outline: 3px solid var(--nav-focus);
+  outline-offset: 1px;
 }
 
 /* Reminder Notification Bar Styling */
@@ -1602,11 +1637,13 @@ body.dark-mode {
 }
 
 .dark-mode .nav-links a {
-  color: #e5edf7;
+  color: #f2f8ff;
 }
 
-.dark-mode .nav-links a:hover {
+.dark-mode .nav-links a:hover,
+.dark-mode .nav-links a:focus {
   background-color: #2a3747;
+  color: #fff;
 }
 
 .dark-mode .dropdown-menu {
@@ -1616,11 +1653,13 @@ body.dark-mode {
 }
 
 .dark-mode .dropdown-menu a {
-  color: #e6edf5;
+  color: #f2f8ff;
 }
 
-.dark-mode .dropdown-menu a:hover {
+.dark-mode .dropdown-menu a:hover,
+.dark-mode .dropdown-menu a:focus {
   background-color: #344556;
+  color: #fff;
 }
 
 .dark-mode .dropdown-submenu-items {
@@ -2853,41 +2892,78 @@ body.settings-modal-open {
   color: var(--th-header-text, #fff);
 }
 
-[data-theme] nav {
+body[data-theme] nav {
   background-color: var(--th-nav-bg, #005a9e);
 }
 
-[data-theme] nav a {
+/* Use body[data-theme] so these nav colors win over the global
+   body[data-theme] a { color: var(--th-link) } rule defined later. */
+body[data-theme] nav a {
   color: var(--th-nav-text, #fff);
 }
 
-[data-theme] .nav-links > li > a:hover,
-[data-theme] .nav-links > li > a:focus {
-  background-color: rgba(255,255,255,0.15);
-}
-
-[data-theme] .dropdown-menu {
-  background-color: var(--th-nav-bg, #005a9e);
-  border-color: rgba(255,255,255,0.15);
-}
-
-[data-theme] .dropdown-menu li a {
-  color: var(--th-nav-text, #fff);
-}
-
-[data-theme] .dropdown-menu li a:hover,
-[data-theme] .dropdown-menu li a:focus {
+body[data-theme] .nav-links > li > a:hover,
+body[data-theme] .nav-links > li > a:focus {
   background-color: rgba(255,255,255,0.18);
+  color: #fff;
 }
 
-[data-theme] .dropdown-submenu-items {
+body[data-theme] .nav-links > li > a:active,
+body[data-theme] .nav-links > li > a[aria-current="page"] {
+  background-color: var(--th-accent, rgba(0,0,0,0.28));
+  color: #fff;
+}
+
+body[data-theme] .nav-links a:focus-visible {
+  outline: 3px solid var(--nav-focus);
+  outline-offset: 1px;
+}
+
+body[data-theme] .dropdown-menu {
+  background-color: var(--th-nav-bg, #005a9e);
+  border-color: rgba(255,255,255,0.22);
+}
+
+body[data-theme] .dropdown-menu li a {
+  color: var(--th-nav-text, #fff);
+}
+
+body[data-theme] .dropdown-menu li a:hover,
+body[data-theme] .dropdown-menu li a:focus {
+  background-color: rgba(255,255,255,0.22);
+  color: #fff;
+}
+
+body[data-theme] .dropdown-menu li a:active {
+  background-color: var(--th-accent, rgba(0,0,0,0.28));
+  color: #fff;
+}
+
+body[data-theme] .dropdown-menu a:focus-visible,
+body[data-theme] .dropdown-submenu-items a:focus-visible,
+body[data-theme] .dropdown-submenu-items button:focus-visible,
+body[data-theme] .dropdown-submenu-items .import-button:focus-visible {
+  outline: 3px solid var(--nav-focus);
+  outline-offset: 1px;
+}
+
+body[data-theme] .dropdown-submenu-items {
   background-color: var(--th-nav-bg, #005a9e);
 }
 
-[data-theme] .dropdown-submenu-items li a,
-[data-theme] .dropdown-submenu-items li button,
-[data-theme] .dropdown-submenu-items li label {
+body[data-theme] .dropdown-submenu-items li a,
+body[data-theme] .dropdown-submenu-items li button,
+body[data-theme] .dropdown-submenu-items li label {
   color: var(--th-nav-text, #fff);
+}
+
+body[data-theme] .dropdown-submenu-items li button:hover,
+body[data-theme] .dropdown-submenu-items li button:focus,
+body[data-theme] .dropdown-submenu-items li .import-button:hover,
+body[data-theme] .dropdown-submenu-items li .import-button:focus {
+  background-color: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.35);
+  color: #fff;
 }
 
 [data-theme] .quick-stat-card {
@@ -3109,9 +3185,27 @@ body[data-theme] table td {
   border-color: var(--th-card-border, #d4e4f0);
 }
 
+/* Modal/overlay backdrops. !important is required because several overlays
+   set their background via inline styles when created in JS. */
 body[data-theme] .settings-modal-backdrop,
-body[data-theme] #reports-overlay {
-  background: color-mix(in srgb, var(--th-body-bg, #000) 55%, #000 45%);
+body[data-theme] #reports-overlay,
+body[data-theme] #add-asset-modal,
+body[data-theme] #view-assets-modal,
+body[data-theme] #edit-asset-modal,
+body[data-theme] #asset-history-modal,
+body[data-theme] #edit-history-modal,
+body[data-theme] #preferences-modal {
+  background: color-mix(in srgb, var(--th-body-bg, #000) 55%, #000 45%) !important;
+}
+
+/* Inline-styled popups (report sections are positioned via inline styles) */
+body[data-theme] .report-section {
+  border: 1px solid var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] .report-section p,
+body[data-theme] .report-section li {
+  color: var(--th-text, #333);
 }
 
 body[data-theme] #add-asset-modal > div,
@@ -3126,10 +3220,121 @@ body[data-theme] .asset-detail-modal-inner {
   border-color: var(--th-card-border, #d4e4f0);
 }
 
+/* Asset modal inner content: muted text, chips, badges, timeline, forms */
+body[data-theme] .preferences-modal-intro,
+body[data-theme] .preferences-help,
+body[data-theme] .preferences-field label,
+body[data-theme] .asset-filter-summary,
+body[data-theme] #selected-assets-count,
+body[data-theme] .asset-select-all-toggle,
+body[data-theme] .asset-sort-row label,
+body[data-theme] .edit-cost-helper,
+body[data-theme] .edit-cost-sub-label,
+body[data-theme] .cost-helper-text,
+body[data-theme] .cost-sub-label,
+body[data-theme] .empty-state,
+body[data-theme] .empty-state-cell {
+  color: var(--th-text, #556);
+  opacity: 0.85;
+}
+
+body[data-theme] .filter-chip {
+  background: var(--th-card-bg, #fff);
+  color: var(--th-text, #1c3f60);
+  border-color: var(--th-card-border, #c7d8e7);
+}
+
+body[data-theme] .filter-chip:hover {
+  background: var(--th-nav-bg, #d8e6f3);
+  color: var(--th-nav-text, #fff);
+}
+
+body[data-theme] .filter-chip.is-active {
+  background: var(--th-btn-bg, #0078d4);
+  color: var(--th-btn-text, #fff);
+  border-color: var(--th-btn-bg, #0078d4);
+}
+
 body[data-theme] .asset-detail-header {
   background: var(--th-header-bg, #0078d4);
   color: var(--th-header-text, #fff);
   border-color: var(--th-card-border, #d4e4f0);
+}
+
+body[data-theme] .asset-detail-name,
+body[data-theme] .asset-detail-header h2 {
+  color: var(--th-header-text, #fff);
+}
+
+body[data-theme] .asset-detail-section-title,
+body[data-theme] .asset-detail-field-label,
+body[data-theme] .service-date-label,
+body[data-theme] .history-group-label {
+  color: var(--th-text, #8097aa);
+  opacity: 0.8;
+}
+
+body[data-theme] .asset-detail-field-value,
+body[data-theme] .service-date-value,
+body[data-theme] .history-timeline-note {
+  color: var(--th-text, #2a3a4a);
+}
+
+body[data-theme] .history-timeline-meta {
+  color: var(--th-text, #61758b);
+  opacity: 0.85;
+}
+
+body[data-theme] .history-timeline-content,
+body[data-theme] .service-date-card {
+  background: var(--th-card-bg, #f8fbff);
+  border-color: var(--th-card-border, #dbe5ef);
+}
+
+body[data-theme] .history-timeline-dot {
+  background: var(--th-card-border, #e8f1fb);
+}
+
+body[data-theme] .asset-detail-history-wrap,
+body[data-theme] .asset-history-timeline-wrap {
+  border-color: var(--th-card-border, #e0e8f0);
+}
+
+body[data-theme] .asset-detail-section {
+  border-bottom-color: var(--th-card-border, #e4eaf0);
+}
+
+body[data-theme] .history-label-pill,
+body[data-theme] .history-operation-badge,
+body[data-theme] .history-cost-pill,
+body[data-theme] .status-badge {
+  background: var(--th-card-bg, #edf2f8);
+  color: var(--th-text, #465667);
+  border-color: var(--th-card-border, #d5dde6);
+}
+
+/* Keep "close" buttons readable inside themed modals */
+body[data-theme] .asset-detail-close,
+body[data-theme] .preferences-close,
+body[data-theme] .close-report-tab {
+  background: transparent !important;
+  color: var(--th-text, #777) !important;
+  border-color: transparent !important;
+}
+
+body[data-theme] .asset-detail-close:hover,
+body[data-theme] .preferences-close:hover,
+body[data-theme] .close-report-tab:hover {
+  background: var(--th-card-border, #f0f0f0) !important;
+  color: var(--th-text, #333) !important;
+}
+
+body[data-theme] .settings-toggle-switch {
+  background: var(--th-card-border, #bfc9d4);
+}
+
+body[data-theme] .settings-toggle-input:checked + .settings-toggle-switch {
+  background: var(--th-btn-bg, #0078d4);
 }
 
 /* High contrast is independent of the selected color palette. */

@@ -1023,6 +1023,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         applyThemePreference();
 
+        // Read a CSS custom property from the active theme (used to theme popup windows)
+        function cssVarValue(name, fallback = "") {
+            const value = getComputedStyle(document.body).getPropertyValue(name).trim();
+            return value || fallback;
+        }
+
         // --- LANGUAGE SELECTOR ---
         const translations = {
             en: { title: "Service History", welcome: (name) => `Welcome Back, ${name}!`, dashboard: "Your Service History Dashboard" },
@@ -3237,7 +3243,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 section.style.left = '50%';
                 section.style.transform = 'translate(-50%, -50%)';
                 section.style.zIndex = 1001;
-                section.style.background = '#fff';
+                // Let the active theme stylesheet control the popup surface; only
+                // fall back to white when no named theme is selected.
+                section.style.background = document.body.hasAttribute('data-theme')
+                    ? ''
+                    : '#fff';
                 section.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
                 section.style.borderRadius = '10px';
                 section.style.padding = '2em';
@@ -3286,12 +3296,43 @@ document.addEventListener("DOMContentLoaded", function () {
         hideAllReportSections();
 
         document.getElementById('fab').addEventListener('click', function () {
+            // Carry the active named theme's palette into the popup window so it
+            // matches the dashboard instead of always rendering in plain light tones.
+            const themeVars = document.body.hasAttribute('data-theme')
+                ? `
+          body {
+            background: ${cssVarValue('--th-body-bg', '#ffffff')};
+            color: ${cssVarValue('--th-text', '#333333')};
+          }
+          button {
+            background: ${cssVarValue('--th-btn-bg', '#0078d4')};
+            color: ${cssVarValue('--th-btn-text', '#ffffff')};
+            border: 1px solid ${cssVarValue('--th-btn-bg', '#0078d4')};
+            border-radius: 6px;
+            padding: 0.5em 1em;
+            cursor: pointer;
+          }
+          input, select, textarea {
+            background: ${cssVarValue('--th-card-bg', '#ffffff')};
+            color: ${cssVarValue('--th-text', '#333333')};
+            border: 1px solid ${cssVarValue('--th-card-border', '#bbbbbb')};
+            border-radius: 4px;
+            padding: 0.35em 0.5em;
+          }
+          .axle-col {
+            background: ${cssVarValue('--th-card-bg', '#f6f8fa')};
+            border: 1px solid ${cssVarValue('--th-card-border', '#dde4ec')};
+            box-shadow: none;
+          }
+          .axle-label, .axle-sides-row label { color: ${cssVarValue('--th-text', '#2a3b4d')}; }`
+                : '';
             const formHtml = `
       <html>
       <head>
         <title>Add Asset and Service</title>
         <style>
           body { font-family: sans-serif; margin: 2em; }
+          ${themeVars}
           .form-section { margin-bottom: 1.5em; }
           .service-checkboxes label { display: flex; align-items: center; margin-bottom: 0.5em; }
           .service-checkboxes input[type="checkbox"] { margin-left: 1em; }
