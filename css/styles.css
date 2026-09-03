@@ -18,7 +18,7 @@
 }
 
 body {
-  font-family: 'Arial', sans-serif;
+  font-family: "Arial", sans-serif;
   line-height: 1.6;
   background-color: #f9f9f9;
   color: #333;
@@ -151,20 +151,19 @@ nav {
   position: relative; /* Ensure the dropdown menu is positioned relative to the parent nav item */
 }
 
-
 .dropdown-menu {
   display: none;
-  position: absolute; 
+  position: absolute;
   /* slight overlap prevents a hover gap between trigger and menu */
   top: calc(100% - 2px);
-  left: 50%; 
-  transform: translateX(-50%); 
+  left: 50%;
+  transform: translateX(-50%);
   background-color: #005a9e;
   padding: 10px;
   margin-top: 0;
   border-radius: 5px;
   z-index: 10;
-  min-width: 200px; 
+  min-width: 200px;
   white-space: nowrap;
 }
 
@@ -424,7 +423,9 @@ nav {
   cursor: pointer;
   box-shadow: none;
   min-height: 28px;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .reminder-actions button:hover {
@@ -446,7 +447,7 @@ nav {
   z-index: 1002;
   min-width: 320px;
   max-width: 95vw;
-  box-shadow: 0 8px 42px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 42px rgba(0, 0, 0, 0.12);
 }
 .recent-activities ul {
   list-style: none;
@@ -575,7 +576,9 @@ nav {
   opacity: 0;
   pointer-events: none;
   transform: translateY(8px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .feedback-toast.is-visible {
@@ -804,23 +807,30 @@ button {
   padding: 9px 18px;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.1s ease;
   font-size: 0.95rem;
   font-weight: 500;
   line-height: 1.2;
   min-height: 36px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 button:hover {
   background-color: #005a9e;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.14),
+    0 1px 3px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
 }
 
 button:active {
   transform: translateY(0);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.10);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .print-button {
@@ -1563,12 +1573,36 @@ footer {
   border: 1px solid transparent;
 }
 
-.history-badge-created { background: #e5f7ea; color: #1f6f40; border-color: #bfe3c8; }
-.history-badge-updated { background: #eaf2fc; color: #225f9d; border-color: #bfd5ee; }
-.history-badge-maintenance { background: #f6f0ff; color: #6942a8; border-color: #ddccf6; }
-.history-badge-repair { background: #fff2e8; color: #9a551f; border-color: #f5d2b5; }
-.history-badge-service { background: #e9f8f5; color: #1d6f67; border-color: #bfebe3; }
-.history-badge-generic { background: #edf1f6; color: #465667; border-color: #d5dde6; }
+.history-badge-created {
+  background: #e5f7ea;
+  color: #1f6f40;
+  border-color: #bfe3c8;
+}
+.history-badge-updated {
+  background: #eaf2fc;
+  color: #225f9d;
+  border-color: #bfd5ee;
+}
+.history-badge-maintenance {
+  background: #f6f0ff;
+  color: #6942a8;
+  border-color: #ddccf6;
+}
+.history-badge-repair {
+  background: #fff2e8;
+  color: #9a551f;
+  border-color: #f5d2b5;
+}
+.history-badge-service {
+  background: #e9f8f5;
+  color: #1d6f67;
+  border-color: #bfebe3;
+}
+.history-badge-generic {
+  background: #edf1f6;
+  color: #465667;
+  border-color: #d5dde6;
+}
 
 .history-label-pill {
   background: #edf2f8;
@@ -2405,7 +2439,7 @@ body.dark-mode {
 }
 
 .settings-toggle-switch::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 3px;
   left: 3px;
@@ -2583,13 +2617,16 @@ body.settings-modal-open {
   cursor: pointer;
   font-size: 0.93rem;
   font-weight: 500;
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.10);
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.1s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .btn-close-modal:hover {
   background: #005a9e;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.14);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14);
   transform: translateY(-1px);
 }
 
@@ -2601,7 +2638,6 @@ body.settings-modal-open {
 .dark-mode .settings-modal-footer {
   border-top-color: #2d3a49;
 }
-<<<<<<< HEAD
 
 /* ============================================================
    THEME PICKER UI
@@ -2644,7 +2680,10 @@ body.settings-modal-open {
   border-radius: 10px;
   padding: 6px 7px 7px;
   cursor: pointer;
-  transition: border-color 0.18s, box-shadow 0.18s, background 0.15s;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s,
+    background 0.15s;
   outline: none;
   min-width: 72px;
 }
@@ -2670,7 +2709,7 @@ body.settings-modal-open {
   width: 48px;
   height: 32px;
   border-radius: 6px;
-  border: 1px solid rgba(0,0,0,0.10);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
 }
 
@@ -2905,13 +2944,13 @@ body[data-theme] nav a {
 
 body[data-theme] .nav-links > li > a:hover,
 body[data-theme] .nav-links > li > a:focus {
-  background-color: rgba(255,255,255,0.18);
+  background-color: rgba(255, 255, 255, 0.18);
   color: #fff;
 }
 
 body[data-theme] .nav-links > li > a:active,
 body[data-theme] .nav-links > li > a[aria-current="page"] {
-  background-color: var(--th-accent, rgba(0,0,0,0.28));
+  background-color: var(--th-accent, rgba(0, 0, 0, 0.28));
   color: #fff;
 }
 
@@ -2922,7 +2961,7 @@ body[data-theme] .nav-links a:focus-visible {
 
 body[data-theme] .dropdown-menu {
   background-color: var(--th-nav-bg, #005a9e);
-  border-color: rgba(255,255,255,0.22);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 body[data-theme] .dropdown-menu li a {
@@ -2931,12 +2970,12 @@ body[data-theme] .dropdown-menu li a {
 
 body[data-theme] .dropdown-menu li a:hover,
 body[data-theme] .dropdown-menu li a:focus {
-  background-color: rgba(255,255,255,0.22);
+  background-color: rgba(255, 255, 255, 0.22);
   color: #fff;
 }
 
 body[data-theme] .dropdown-menu li a:active {
-  background-color: var(--th-accent, rgba(0,0,0,0.28));
+  background-color: var(--th-accent, rgba(0, 0, 0, 0.28));
   color: #fff;
 }
 
@@ -2962,8 +3001,8 @@ body[data-theme] .dropdown-submenu-items li button:hover,
 body[data-theme] .dropdown-submenu-items li button:focus,
 body[data-theme] .dropdown-submenu-items li .import-button:hover,
 body[data-theme] .dropdown-submenu-items li .import-button:focus {
-  background-color: rgba(255,255,255,0.22);
-  border-color: rgba(255,255,255,0.35);
+  background-color: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
   color: #fff;
 }
 
@@ -3053,30 +3092,30 @@ body[data-theme] .dropdown-submenu-items li .import-button:focus {
 }
 
 [data-theme] .theme-swatch-btn:hover {
-  background: rgba(255,255,255,0.3);
+  background: rgba(255, 255, 255, 0.3);
   border-color: var(--th-accent, #0078d4);
 }
 
 [data-theme] .theme-swatch-btn.is-active {
   border-color: var(--th-accent, #0078d4);
   box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.2);
-  background: rgba(255,255,255,0.3);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Dark-tone themes: extra contrast helpers */
 [data-theme="midnight-violet"] .theme-swatch-btn:hover,
 [data-theme="deep-navy"] .theme-swatch-btn:hover {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="midnight-violet"] .theme-swatch-btn.is-active,
 [data-theme="deep-navy"] .theme-swatch-btn.is-active {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 [data-theme="midnight-violet"] table th,
 [data-theme="deep-navy"] table th {
-  background-color: rgba(255,255,255,0.08);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 [data-theme="midnight-violet"] table td,
@@ -3196,7 +3235,11 @@ body[data-theme] #edit-asset-modal,
 body[data-theme] #asset-history-modal,
 body[data-theme] #edit-history-modal,
 body[data-theme] #preferences-modal {
-  background: color-mix(in srgb, var(--th-body-bg, #000) 55%, #000 45%) !important;
+  background: color-mix(
+    in srgb,
+    var(--th-body-bg, #000) 55%,
+    #000 45%
+  ) !important;
 }
 
 /* Inline-styled popups (report sections are positioned via inline styles) */
@@ -3359,7 +3402,6 @@ body.high-contrast textarea:focus-visible,
 body.high-contrast a:focus-visible {
   outline: 3px solid var(--hc-focus);
 }
-=======
 
 /* ============================================================
    THEME PICKER UI
@@ -3402,7 +3444,10 @@ body.high-contrast a:focus-visible {
   border-radius: 10px;
   padding: 6px 7px 7px;
   cursor: pointer;
-  transition: border-color 0.18s, box-shadow 0.18s, background 0.15s;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s,
+    background 0.15s;
   outline: none;
   min-width: 72px;
 }
@@ -3428,7 +3473,7 @@ body.high-contrast a:focus-visible {
   width: 48px;
   height: 32px;
   border-radius: 6px;
-  border: 1px solid rgba(0,0,0,0.10);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
 }
 
@@ -3661,12 +3706,12 @@ body.high-contrast a:focus-visible {
 
 [data-theme] .nav-links > li > a:hover,
 [data-theme] .nav-links > li > a:focus {
-  background-color: rgba(255,255,255,0.15);
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
 [data-theme] .dropdown-menu {
   background-color: var(--th-nav-bg, #005a9e);
-  border-color: rgba(255,255,255,0.15);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 [data-theme] .dropdown-menu li a {
@@ -3675,7 +3720,7 @@ body.high-contrast a:focus-visible {
 
 [data-theme] .dropdown-menu li a:hover,
 [data-theme] .dropdown-menu li a:focus {
-  background-color: rgba(255,255,255,0.18);
+  background-color: rgba(255, 255, 255, 0.18);
 }
 
 [data-theme] .dropdown-submenu-items {
@@ -3774,30 +3819,30 @@ body.high-contrast a:focus-visible {
 }
 
 [data-theme] .theme-swatch-btn:hover {
-  background: rgba(255,255,255,0.3);
+  background: rgba(255, 255, 255, 0.3);
   border-color: var(--th-accent, #0078d4);
 }
 
 [data-theme] .theme-swatch-btn.is-active {
   border-color: var(--th-accent, #0078d4);
   box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.2);
-  background: rgba(255,255,255,0.3);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Dark-tone themes: extra contrast helpers */
 [data-theme="midnight-violet"] .theme-swatch-btn:hover,
 [data-theme="deep-navy"] .theme-swatch-btn:hover {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="midnight-violet"] .theme-swatch-btn.is-active,
 [data-theme="deep-navy"] .theme-swatch-btn.is-active {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 [data-theme="midnight-violet"] table th,
 [data-theme="deep-navy"] table th {
-  background-color: rgba(255,255,255,0.08);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 [data-theme="midnight-violet"] table td,
@@ -3818,4 +3863,3 @@ body.high-contrast a:focus-visible {
 [data-theme="deep-navy"] .settings-toggle-list {
   border-color: var(--th-card-border);
 }
->>>>>>> 287efdc (WIP local css)
