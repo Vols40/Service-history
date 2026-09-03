@@ -2601,6 +2601,7 @@ body.settings-modal-open {
 .dark-mode .settings-modal-footer {
   border-top-color: #2d3a49;
 }
+<<<<<<< HEAD
 
 /* ============================================================
    THEME PICKER UI
@@ -3358,3 +3359,463 @@ body.high-contrast textarea:focus-visible,
 body.high-contrast a:focus-visible {
   outline: 3px solid var(--hc-focus);
 }
+=======
+
+/* ============================================================
+   THEME PICKER UI
+   ============================================================ */
+
+.theme-picker-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 0.5rem 0 0.2rem;
+}
+
+.theme-picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.theme-picker-group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7c93;
+}
+
+.theme-picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.theme-swatch-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 6px 7px 7px;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.15s;
+  outline: none;
+  min-width: 72px;
+}
+
+.theme-swatch-btn:hover {
+  border-color: #0078d4;
+  background: #f0f6ff;
+}
+
+.theme-swatch-btn:focus-visible {
+  box-shadow: 0 0 0 3px #4ab0ff88;
+  border-color: #0078d4;
+}
+
+.theme-swatch-btn.is-active {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 3px #0078d430;
+  background: #e8f3fd;
+}
+
+.theme-swatch-preview {
+  display: block;
+  width: 48px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.10);
+  flex-shrink: 0;
+}
+
+.theme-swatch-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #334;
+  text-align: center;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+/* Dark-mode overrides for picker */
+.dark-mode .theme-picker-group-label {
+  color: #8fa3b8;
+}
+
+.dark-mode .theme-swatch-btn:hover {
+  border-color: #4ab0ff;
+  background: #1b2d3f;
+}
+
+.dark-mode .theme-swatch-btn.is-active {
+  border-color: #4ab0ff;
+  box-shadow: 0 0 0 3px #4ab0ff30;
+  background: #1a2d40;
+}
+
+.dark-mode .theme-swatch-label {
+  color: #c8d8e8;
+}
+
+/* ============================================================
+   NAMED THEMES  (applied via data-theme attribute on <body>)
+   Each theme sets custom properties consumed across the page.
+   ============================================================ */
+
+/* ---------- Ocean Gradient ---------- */
+[data-theme="ocean-gradient"] {
+  --th-bg: #e8f4fb;
+  --th-body-bg: #e8f4fb;
+  --th-header-bg: linear-gradient(135deg, #1a6fa8 0%, #0d9488 100%);
+  --th-header-text: #fff;
+  --th-nav-bg: #1260a0;
+  --th-nav-text: #e0f2fe;
+  --th-card-bg: #ffffff;
+  --th-card-border: #b2e0f8;
+  --th-text: #0c3a57;
+  --th-link: #0d7abf;
+  --th-accent: #0d9488;
+  --th-btn-bg: #0d7abf;
+  --th-btn-text: #fff;
+}
+
+/* ---------- Aurora ---------- */
+[data-theme="aurora"] {
+  --th-bg: #f3e8ff;
+  --th-body-bg: #f3e8ff;
+  --th-header-bg: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+  --th-header-text: #fff;
+  --th-nav-bg: #6d28d9;
+  --th-nav-text: #e0f7ff;
+  --th-card-bg: #ffffff;
+  --th-card-border: #d8b4fe;
+  --th-text: #3b0764;
+  --th-link: #7c3aed;
+  --th-accent: #06b6d4;
+  --th-btn-bg: #7c3aed;
+  --th-btn-text: #fff;
+}
+
+/* ---------- Midnight Violet ---------- */
+[data-theme="midnight-violet"] {
+  --th-bg: #1e1b4b;
+  --th-body-bg: #1e1b4b;
+  --th-header-bg: linear-gradient(135deg, #1e1b4b 0%, #7c3aed 100%);
+  --th-header-text: #e8dfff;
+  --th-nav-bg: #16134a;
+  --th-nav-text: #d1c4f5;
+  --th-card-bg: #2e2a60;
+  --th-card-border: #4c4890;
+  --th-text: #e8e0ff;
+  --th-link: #a78bfa;
+  --th-accent: #7c3aed;
+  --th-btn-bg: #7c3aed;
+  --th-btn-text: #fff;
+}
+
+/* ---------- Emerald Glass ---------- */
+[data-theme="emerald-glass"] {
+  --th-bg: #ecfdf5;
+  --th-body-bg: #ecfdf5;
+  --th-header-bg: linear-gradient(135deg, #065f46 0%, #34d399 100%);
+  --th-header-text: #fff;
+  --th-nav-bg: #064e3b;
+  --th-nav-text: #d1fae5;
+  --th-card-bg: #ffffff;
+  --th-card-border: #6ee7b7;
+  --th-text: #064e3b;
+  --th-link: #059669;
+  --th-accent: #34d399;
+  --th-btn-bg: #059669;
+  --th-btn-text: #fff;
+}
+
+/* ---------- Sunset Blaze ---------- */
+[data-theme="sunset-blaze"] {
+  --th-bg: #fff7ed;
+  --th-body-bg: #fff7ed;
+  --th-header-bg: linear-gradient(135deg, #ea580c 0%, #f59e0b 100%);
+  --th-header-text: #fff;
+  --th-nav-bg: #c2410c;
+  --th-nav-text: #ffedd5;
+  --th-card-bg: #ffffff;
+  --th-card-border: #fcd34d;
+  --th-text: #7c2d12;
+  --th-link: #ea580c;
+  --th-accent: #f59e0b;
+  --th-btn-bg: #ea580c;
+  --th-btn-text: #fff;
+}
+
+/* ---------- Classic Blue ---------- */
+[data-theme="classic-blue"] {
+  --th-bg: #e8f0fe;
+  --th-body-bg: #e8f0fe;
+  --th-header-bg: #1e3a5f;
+  --th-header-text: #e8f0fe;
+  --th-nav-bg: #16304f;
+  --th-nav-text: #cce0ff;
+  --th-card-bg: #ffffff;
+  --th-card-border: #bdd0ef;
+  --th-text: #1a2f4a;
+  --th-link: #1e3a5f;
+  --th-accent: #3b82f6;
+  --th-btn-bg: #1e3a5f;
+  --th-btn-text: #fff;
+}
+
+/* ---------- Slate Gray ---------- */
+[data-theme="slate-gray"] {
+  --th-bg: #f1f5f9;
+  --th-body-bg: #f1f5f9;
+  --th-header-bg: #334155;
+  --th-header-text: #f1f5f9;
+  --th-nav-bg: #1e293b;
+  --th-nav-text: #cbd5e1;
+  --th-card-bg: #ffffff;
+  --th-card-border: #cbd5e1;
+  --th-text: #1e293b;
+  --th-link: #334155;
+  --th-accent: #64748b;
+  --th-btn-bg: #334155;
+  --th-btn-text: #fff;
+}
+
+/* ---------- Forest Green ---------- */
+[data-theme="forest-green"] {
+  --th-bg: #f0fdf4;
+  --th-body-bg: #f0fdf4;
+  --th-header-bg: #14532d;
+  --th-header-text: #f0fdf4;
+  --th-nav-bg: #0f3d22;
+  --th-nav-text: #bbf7d0;
+  --th-card-bg: #ffffff;
+  --th-card-border: #86efac;
+  --th-text: #14532d;
+  --th-link: #166534;
+  --th-accent: #22c55e;
+  --th-btn-bg: #166534;
+  --th-btn-text: #fff;
+}
+
+/* ---------- Warm Sand ---------- */
+[data-theme="warm-sand"] {
+  --th-bg: #fef3c7;
+  --th-body-bg: #fef3c7;
+  --th-header-bg: #92400e;
+  --th-header-text: #fef3c7;
+  --th-nav-bg: #78350f;
+  --th-nav-text: #fde68a;
+  --th-card-bg: #fffbeb;
+  --th-card-border: #fde68a;
+  --th-text: #78350f;
+  --th-link: #92400e;
+  --th-accent: #d97706;
+  --th-btn-bg: #92400e;
+  --th-btn-text: #fff;
+}
+
+/* ---------- Deep Navy ---------- */
+[data-theme="deep-navy"] {
+  --th-bg: #0f172a;
+  --th-body-bg: #0f172a;
+  --th-header-bg: #0f172a;
+  --th-header-text: #e2e8f0;
+  --th-nav-bg: #0a1020;
+  --th-nav-text: #94a3b8;
+  --th-card-bg: #1e293b;
+  --th-card-border: #334155;
+  --th-text: #e2e8f0;
+  --th-link: #60a5fa;
+  --th-accent: #3b82f6;
+  --th-btn-bg: #2563eb;
+  --th-btn-text: #fff;
+}
+
+/* ============================================================
+   APPLY THEME TOKENS TO STRUCTURAL ELEMENTS
+   ============================================================ */
+
+[data-theme] body,
+[data-theme] {
+  background-color: var(--th-body-bg, #f9f9f9);
+  color: var(--th-text, #333);
+}
+
+[data-theme] .header-container {
+  background: var(--th-header-bg, #0078d4);
+  color: var(--th-header-text, #fff);
+}
+
+[data-theme] nav {
+  background-color: var(--th-nav-bg, #005a9e);
+}
+
+[data-theme] nav a {
+  color: var(--th-nav-text, #fff);
+}
+
+[data-theme] .nav-links > li > a:hover,
+[data-theme] .nav-links > li > a:focus {
+  background-color: rgba(255,255,255,0.15);
+}
+
+[data-theme] .dropdown-menu {
+  background-color: var(--th-nav-bg, #005a9e);
+  border-color: rgba(255,255,255,0.15);
+}
+
+[data-theme] .dropdown-menu li a {
+  color: var(--th-nav-text, #fff);
+}
+
+[data-theme] .dropdown-menu li a:hover,
+[data-theme] .dropdown-menu li a:focus {
+  background-color: rgba(255,255,255,0.18);
+}
+
+[data-theme] .dropdown-submenu-items {
+  background-color: var(--th-nav-bg, #005a9e);
+}
+
+[data-theme] .dropdown-submenu-items li a,
+[data-theme] .dropdown-submenu-items li button,
+[data-theme] .dropdown-submenu-items li label {
+  color: var(--th-nav-text, #fff);
+}
+
+[data-theme] .quick-stat-card {
+  background: var(--th-card-bg, #fff8df);
+  border-color: var(--th-card-border, #e0d080);
+  color: var(--th-text, #333);
+}
+
+[data-theme] .analytics-chart-card {
+  background: var(--th-card-bg, #fff);
+  border-color: var(--th-card-border, #d4e4f0);
+  color: var(--th-text, #333);
+}
+
+[data-theme] .report-section {
+  background: var(--th-card-bg, #fff) !important;
+  color: var(--th-text, #333);
+}
+
+[data-theme] .reminder-summary-card {
+  background: var(--th-card-bg, #fff);
+  border-color: var(--th-card-border, #d0e4f4);
+}
+
+[data-theme] footer {
+  background: var(--th-nav-bg, #0078d4);
+  color: var(--th-nav-text, #fff);
+}
+
+[data-theme] .settings-modal-panel {
+  background: var(--th-card-bg, #fff);
+  color: var(--th-text, #333);
+}
+
+[data-theme] .settings-modal-header {
+  background: var(--th-nav-bg, #005a9e);
+  color: var(--th-nav-text, #fff);
+}
+
+[data-theme] .settings-modal-footer {
+  border-top-color: var(--th-card-border, #e0e8f0);
+}
+
+[data-theme] .settings-section-desc,
+[data-theme] .settings-help {
+  color: var(--th-text, #444);
+}
+
+[data-theme] .settings-field label {
+  color: var(--th-text, #333);
+}
+
+[data-theme] .settings-field input[type="text"],
+[data-theme] .settings-field select {
+  background: var(--th-card-bg, #fff);
+  color: var(--th-text, #333);
+  border-color: var(--th-card-border, #c0cad8);
+}
+
+[data-theme] .settings-toggle-row {
+  background: var(--th-card-bg, #f7fafc);
+  border-bottom-color: var(--th-card-border, #e2eaf3);
+}
+
+[data-theme] .settings-toggle-label strong {
+  color: var(--th-text, #222);
+}
+
+[data-theme] .settings-toggle-label span {
+  color: var(--th-text, #555);
+  opacity: 0.8;
+}
+
+[data-theme] .btn-close-modal {
+  background: var(--th-btn-bg, #0078d4);
+  color: var(--th-btn-text, #fff);
+}
+
+[data-theme] .theme-picker-group-label {
+  color: var(--th-text, #6b7c93);
+  opacity: 0.75;
+}
+
+[data-theme] .theme-swatch-label {
+  color: var(--th-text, #334);
+}
+
+[data-theme] .theme-swatch-btn:hover {
+  background: rgba(255,255,255,0.3);
+  border-color: var(--th-accent, #0078d4);
+}
+
+[data-theme] .theme-swatch-btn.is-active {
+  border-color: var(--th-accent, #0078d4);
+  box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.2);
+  background: rgba(255,255,255,0.3);
+}
+
+/* Dark-tone themes: extra contrast helpers */
+[data-theme="midnight-violet"] .theme-swatch-btn:hover,
+[data-theme="deep-navy"] .theme-swatch-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+[data-theme="midnight-violet"] .theme-swatch-btn.is-active,
+[data-theme="deep-navy"] .theme-swatch-btn.is-active {
+  background: rgba(255,255,255,0.12);
+}
+
+[data-theme="midnight-violet"] table th,
+[data-theme="deep-navy"] table th {
+  background-color: rgba(255,255,255,0.08);
+}
+
+[data-theme="midnight-violet"] table td,
+[data-theme="deep-navy"] table td {
+  background-color: var(--th-card-bg);
+}
+
+[data-theme="midnight-violet"] table th,
+[data-theme="midnight-violet"] table td,
+[data-theme="deep-navy"] table th,
+[data-theme="deep-navy"] table td {
+  border-color: var(--th-card-border);
+  color: var(--th-text);
+}
+
+/* Dark-mode overrides for theme picker (swatch) inside any named dark theme */
+[data-theme="midnight-violet"] .settings-toggle-list,
+[data-theme="deep-navy"] .settings-toggle-list {
+  border-color: var(--th-card-border);
+}
+>>>>>>> 287efdc (WIP local css)
