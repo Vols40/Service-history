@@ -2892,73 +2892,75 @@ body.settings-modal-open {
   color: var(--th-header-text, #fff);
 }
 
-[data-theme] nav {
+body[data-theme] nav {
   background-color: var(--th-nav-bg, #005a9e);
 }
 
-[data-theme] nav a {
+/* Use body[data-theme] so these nav colors win over the global
+   body[data-theme] a { color: var(--th-link) } rule defined later. */
+body[data-theme] nav a {
   color: var(--th-nav-text, #fff);
 }
 
-[data-theme] .nav-links > li > a:hover,
-[data-theme] .nav-links > li > a:focus {
+body[data-theme] .nav-links > li > a:hover,
+body[data-theme] .nav-links > li > a:focus {
   background-color: rgba(255,255,255,0.18);
   color: #fff;
 }
 
-[data-theme] .nav-links > li > a:active,
-[data-theme] .nav-links > li > a[aria-current="page"] {
+body[data-theme] .nav-links > li > a:active,
+body[data-theme] .nav-links > li > a[aria-current="page"] {
   background-color: var(--th-accent, rgba(0,0,0,0.28));
   color: #fff;
 }
 
-[data-theme] .nav-links a:focus-visible {
+body[data-theme] .nav-links a:focus-visible {
   outline: 3px solid var(--nav-focus);
   outline-offset: 1px;
 }
 
-[data-theme] .dropdown-menu {
+body[data-theme] .dropdown-menu {
   background-color: var(--th-nav-bg, #005a9e);
   border-color: rgba(255,255,255,0.22);
 }
 
-[data-theme] .dropdown-menu li a {
+body[data-theme] .dropdown-menu li a {
   color: var(--th-nav-text, #fff);
 }
 
-[data-theme] .dropdown-menu li a:hover,
-[data-theme] .dropdown-menu li a:focus {
+body[data-theme] .dropdown-menu li a:hover,
+body[data-theme] .dropdown-menu li a:focus {
   background-color: rgba(255,255,255,0.22);
   color: #fff;
 }
 
-[data-theme] .dropdown-menu li a:active {
+body[data-theme] .dropdown-menu li a:active {
   background-color: var(--th-accent, rgba(0,0,0,0.28));
   color: #fff;
 }
 
-[data-theme] .dropdown-menu a:focus-visible,
-[data-theme] .dropdown-submenu-items a:focus-visible,
-[data-theme] .dropdown-submenu-items button:focus-visible,
-[data-theme] .dropdown-submenu-items .import-button:focus-visible {
+body[data-theme] .dropdown-menu a:focus-visible,
+body[data-theme] .dropdown-submenu-items a:focus-visible,
+body[data-theme] .dropdown-submenu-items button:focus-visible,
+body[data-theme] .dropdown-submenu-items .import-button:focus-visible {
   outline: 3px solid var(--nav-focus);
   outline-offset: 1px;
 }
 
-[data-theme] .dropdown-submenu-items {
+body[data-theme] .dropdown-submenu-items {
   background-color: var(--th-nav-bg, #005a9e);
 }
 
-[data-theme] .dropdown-submenu-items li a,
-[data-theme] .dropdown-submenu-items li button,
-[data-theme] .dropdown-submenu-items li label {
+body[data-theme] .dropdown-submenu-items li a,
+body[data-theme] .dropdown-submenu-items li button,
+body[data-theme] .dropdown-submenu-items li label {
   color: var(--th-nav-text, #fff);
 }
 
-[data-theme] .dropdown-submenu-items li button:hover,
-[data-theme] .dropdown-submenu-items li button:focus,
-[data-theme] .dropdown-submenu-items li .import-button:hover,
-[data-theme] .dropdown-submenu-items li .import-button:focus {
+body[data-theme] .dropdown-submenu-items li button:hover,
+body[data-theme] .dropdown-submenu-items li button:focus,
+body[data-theme] .dropdown-submenu-items li .import-button:hover,
+body[data-theme] .dropdown-submenu-items li .import-button:focus {
   background-color: rgba(255,255,255,0.22);
   border-color: rgba(255,255,255,0.35);
   color: #fff;
@@ -3183,19 +3185,17 @@ body[data-theme] table td {
   border-color: var(--th-card-border, #d4e4f0);
 }
 
+/* Modal/overlay backdrops. !important is required because several overlays
+   set their background via inline styles when created in JS. */
 body[data-theme] .settings-modal-backdrop,
-body[data-theme] #reports-overlay {
-  background: color-mix(in srgb, var(--th-body-bg, #000) 55%, #000 45%);
-}
-
-/* Modal/overlay backdrops created with inline styles */
+body[data-theme] #reports-overlay,
 body[data-theme] #add-asset-modal,
 body[data-theme] #view-assets-modal,
 body[data-theme] #edit-asset-modal,
 body[data-theme] #asset-history-modal,
 body[data-theme] #edit-history-modal,
 body[data-theme] #preferences-modal {
-  background: color-mix(in srgb, var(--th-body-bg, #000) 55%, #000 45%);
+  background: color-mix(in srgb, var(--th-body-bg, #000) 55%, #000 45%) !important;
 }
 
 /* Inline-styled popups (report sections are positioned via inline styles) */
