@@ -161,6 +161,33 @@ document.addEventListener("DOMContentLoaded", function () {
         const DOCUMENT_REMINDER_THRESHOLDS_DAYS = [30, 15, 7];
         const DOCUMENT_EXPIRING_SOON_DAYS = 30;
 
+        // Which document keys apply to a given asset "Type". Keys not listed here
+        // fall back to DEFAULT_APPLICABLE_DOCUMENT_KEYS (all document types), so
+        // existing/older asset types keep behaving exactly as before.
+        // Extend this map (or replace with a config-driven source) to support
+        // per-type applicability rules for additional vehicle types later.
+        const DEFAULT_APPLICABLE_DOCUMENT_KEYS = DOCUMENT_TYPES.map(docType => docType.key);
+        const DOCUMENT_APPLICABILITY_BY_TYPE = {
+            trailer: ["rca", "itp"]
+        };
+
+        function getApplicableDocumentKeys(assetType) {
+            const normalized = String(assetType || "").trim().toLowerCase();
+            return DOCUMENT_APPLICABILITY_BY_TYPE[normalized] || DEFAULT_APPLICABLE_DOCUMENT_KEYS;
+        }
+
+        function isDocumentApplicableForType(assetType, docKey) {
+            return getApplicableDocumentKeys(assetType).includes(docKey);
+        }
+
+        // Safe helper: returns the DOCUMENT_TYPES entries applicable to a given
+        // asset type. Backward compatible with any asset/type not present in the
+        // applicability map (returns all document types, same as before this feature).
+        function getApplicableDocumentTypes(assetType) {
+            const applicableKeys = getApplicableDocumentKeys(assetType);
+            return DOCUMENT_TYPES.filter(docType => applicableKeys.includes(docType.key));
+        }
+
         function clampPreferenceNumber(value, fallback, min, max) {
             const parsed = Number.parseInt(value, 10);
             if (!Number.isFinite(parsed)) return fallback;
@@ -943,10 +970,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function renderComplianceBadgesHtml(asset) {
             const { statuses } = getAssetComplianceSummary(asset);
-            return `<span class="compliance-badges">${statuses.map(item => {
+            if (!statuses.length) {
+                return `<span class="compliance-badges compliance-badges-empty">—</span>`;
+            }
+            const chips = statuses.map(item => {
                 const title = `${item.label}: ${item.status.label}${item.status.daysLeft !== null && item.status.daysLeft !== undefined ? ` (${item.status.daysLeft}d)` : ""}`;
                 return `<span class="compliance-chip compliance-${item.status.state}" title="${escapeHtml(title)}">${escapeHtml(item.short)}</span>`;
-            }).join("")}</span>`;
+            }).join(`<span class="compliance-sep" aria-hidden="true">/</span>`);
+            const tooltip = statuses.map(item => `${item.label}: ${item.status.label}`).join(" / ");
+            return `<span class="compliance-badges" title="${escapeHtml(tooltip)}">${chips}</span>`;
         }
 
         function renderDashboardQuickFilters() {
@@ -1316,7 +1348,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function buildAssetPdfMetadataRows(asset) {
-            return [
+            const rows = [
                 ["Type", asset?.type || "-"],
                 ["Status", asset?.status || "-"],
                 ["VIN", asset?.vin || "-"],
@@ -1324,6 +1356,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 ["Color", asset?.color || "-"],
                 ["Added", asset?.created ? new Date(asset.created).toLocaleString() : "-"],
             ];
+            // Only include documents applicable to this asset's type (e.g. Trailer
+            // assets don't track Rovinietă/Licențe), so non-applicable rows are
+            // omitted entirely rather than shown as "N/A".
+            getApplicableDocumentTypes(asset?.type).forEach(docType => {
+                const entry = (asset?.documents || {})[docType.key] || {};
+                const status = getDocumentStatus(entry.expiry);
+                const expiryText = entry.expiry ? formatDisplayDate(entry.expiry) : "-";
+                rows.push([docType.label, `${expiryText} (${status.label})`]);
+            });
+            return rows;
         }
 
         function buildAssetPdfHistoryRows(asset) {
@@ -2204,7 +2246,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function getAssetDocumentStatuses(asset) {
             const documents = (asset && asset.documents) || {};
-            return DOCUMENT_TYPES.map(docType => {
+            return getApplicableDocumentTypes(asset && asset.type).map(docType => {
                 const entry = documents[docType.key] || {};
                 return { ...docType, entry, status: getDocumentStatus(entry.expiry) };
             });
@@ -2476,7 +2518,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             <td>${highlightSearchMatch(asset.type || "—", activeAssetSearchQuery)}</td>
                             <td>${renderStatusBadge(asset.status || "—")}</td>
                             <td>${renderHealthIndicator(asset)}</td>
-                            <td>${renderComplianceBadgesHtml(asset)}</td>
+                            <td class="truncate-cell">${renderComplianceBadgesHtml(asset)}</td>
                             <td>${highlightSearchMatch(latestServiceCostText, activeAssetSearchQuery)}</td>
                             <td class="truncate-cell" title="${escapeHtml(safeVin)}">${highlightSearchMatch(safeVin, activeAssetSearchQuery)}</td>
                             <td>${highlightSearchMatch(asset.year || "—", activeAssetSearchQuery)}</td>
@@ -2900,8 +2942,16 @@ document.addEventListener("DOMContentLoaded", function () {
             return !isNaN(new Date(value).getTime());
         }
 
-        function renderDocumentSectionFieldsHtml(docType, entry = {}) {
+        function renderDocumentSectionFieldsHtml(docType, entry = {}, options = {}) {
             const prefix = `doc-${docType.key}`;
+            if (options.notApplicable) {
+                return `
+                    <fieldset class="document-fieldset document-fieldset-disabled" data-doc-key="${docType.key}" data-not-applicable="true">
+                        <legend>${escapeHtml(docType.label)}</legend>
+                        <p class="document-not-applicable-hint">Nu se aplică pentru tipul ${escapeHtml(options.assetTypeLabel || "")}.</p>
+                    </fieldset>
+                `;
+            }
             return `
                 <fieldset class="document-fieldset" data-doc-key="${docType.key}">
                     <legend>${escapeHtml(docType.label)} <span class="document-status-pill" id="${prefix}-status"></span></legend>
@@ -2966,7 +3016,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? `
                     <div class="document-alert" id="documents-modal-alert" role="alert" aria-live="assertive"></div>
                     <form id="documents-form">
-                        ${DOCUMENT_TYPES.map(docType => renderDocumentSectionFieldsHtml(docType, (selectedAsset.documents || {})[docType.key] || {})).join("")}
+                        ${DOCUMENT_TYPES.map(docType => renderDocumentSectionFieldsHtml(
+                            docType,
+                            (selectedAsset.documents || {})[docType.key] || {},
+                            {
+                                notApplicable: !isDocumentApplicableForType(selectedAsset.type, docType.key),
+                                assetTypeLabel: selectedAsset.type || ""
+                            }
+                        )).join("")}
                     </form>
                 `
                 : `<div class="documents-empty-state">Select a vehicle to view and manage its Rovinietă, RCA, ITP, and Licențe validity.</div>`;
@@ -3018,7 +3075,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     e.preventDefault();
                     const values = {};
                     let hasError = false;
+                    const existingDocuments = selectedAsset.documents || {};
                     DOCUMENT_TYPES.forEach(docType => {
+                        if (!isDocumentApplicableForType(selectedAsset.type, docType.key)) {
+                            // Not applicable for this asset type: leave any previously
+                            // saved value untouched instead of overwriting with blanks.
+                            values[docType.key] = existingDocuments[docType.key] || {};
+                            return;
+                        }
                         const prefix = `doc-${docType.key}`;
                         const expiryInput = form.querySelector(`#${prefix}-expiry`);
                         const expiry = expiryInput ? expiryInput.value : "";
