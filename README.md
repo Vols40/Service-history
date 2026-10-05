@@ -1,29 +1,45 @@
 # Service History
 
-Service History is a static web application for tracking assets, maintenance events, and service history records in the browser.
+Service History is a static browser application for keeping asset details, maintenance records, and document expiry dates together. It is an MVP intended for personal or local use, not a multi-user service.
 
 ## Features
 
-- Add and view assets
-- Record service history events
-- Track upcoming service reminders
-- View recent activities
-- See quick statistics and report summaries
-- Export data as JSON, CSV, and PDF
-- Dark mode toggle
-- English and Romanian language switch
-- Settings & preferences panel (default currency, reminder timing, theme/language)
-- Team roles and comments stored locally
+- Create, edit, delete, search, filter, and bulk-update assets
+- Record and edit service history, including costs and currencies
+- Track service reminders with configurable due-soon, look-ahead, and snooze periods
+- Dismiss or snooze individual reminders
+- Track expiry dates for vehicle documents
+- View dashboard statistics, recent activity, service trends, cost summaries, and a basic predictive-maintenance estimate
+- Add comments and team-role labels in the current browser
+- Choose themes, language, display name, and other local preferences
+- Import and export asset data as JSON; export CSV and PDF reports
 
-## Tech Stack
+JSON imports are merged with the current assets rather than replacing them. Assets identified as duplicates are skipped, and existing records are kept unchanged. Export a JSON backup before making bulk changes or moving data.
 
-- HTML
-- CSS
-- JavaScript
-- Browser `localStorage` for persistence
+## Run locally
+
+1. Clone the repository.
+2. Open `index.html` in a modern browser, or serve the project with an editor extension such as VS Code Live Server.
+
+No build step or package installation is required. PDF export relies on the jsPDF scripts included by the page.
+
+## Data, privacy, and limitations
+
+- Assets, preferences, comments, team-role labels, and reminder actions are stored in the browser's `localStorage`. They are not shared between browsers or devices.
+- Clearing site data or changing browser profiles can remove the data. Export JSON backups regularly; CSV and PDF exports are reports, not complete backups.
+- There is no backend, account system, authentication, authorization, or multi-user synchronization. Team roles are labels only and do not restrict access.
+- Notification preferences control which reminders appear in the app; there are no push, email, or background notifications.
+- Predictive maintenance currently uses a simple estimate of 180 days after the latest recorded service event. It is not a forecast based on usage or component condition.
+- Dropbox upload is a placeholder and is not available. No external service credentials or integrations are configured.
+- Currency totals are grouped by currency. The app does not perform currency conversion.
+
+Because this is a static client-side app, do not treat locally stored information as protected or as a substitute for a backed-up system of record.
+
+## Technology and layout
+
+- HTML, CSS, and browser JavaScript
+- `localStorage` for local persistence
 - jsPDF and jsPDF-AutoTable for PDF export
-
-## Project Structure
 
 ```text
 .
@@ -36,39 +52,8 @@ Service History is a static web application for tracking assets, maintenance eve
     └── logo.PNG
 ```
 
-## How to Run
-
-1. Clone the repository.
-2. Open the project folder in VS Code.
-3. Open `index.html` in a browser.
-
-You can also use the VS Code Live Server extension for a smoother local development experience.
-
-## Data Storage
-
-This app currently stores data in the browser using `localStorage`.
-That means:
-
-- data is local to the browser/device
-- clearing browser storage may remove saved data
-- there is currently no backend or cloud sync
-
-## Current Status
-
-This project is currently an MVP/prototype and includes working front-end functionality for service history management.
-
 ## Roadmap
 
-Planned improvements:
+Potential future work includes a modular JavaScript structure, automated regression coverage, improved accessibility and responsive behavior, and optional backend storage with properly designed authentication and synchronization. External integrations such as Dropbox require a chosen provider, secure credential handling, and service configuration before implementation.
 
-- edit and delete assets
-- improved asset data consistency
-- better responsive design
-- cleanup of placeholder/demo content
-- modular JavaScript structure
-- optional backend/database integration
-
-## Repository
-
-GitHub repository:
-`https://github.com/Vols40/Service-history`
+Repository: <https://github.com/Vols40/Service-history>
