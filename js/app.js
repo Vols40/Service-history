@@ -378,7 +378,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function renderUpcomingReminders() {
             const assets = getStoredAssets();
-            const { reminderDueSoonDays, reminderLookAheadDays } = getAppPreferences();
+            const {
+                reminderDueSoonDays,
+                reminderLookAheadDays,
+                notifyReminders,
+                notifyDueSoon,
+                notifyOverdue
+            } = getAppPreferences();
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const dueSoonLimit = new Date(today);
@@ -412,6 +418,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     urgencyText,
                     relativeLabel: getReminderRelativeLabel(nextService, today)
                 };
+                if (!notifyReminders ||
+                    (category === "overdue" && !notifyOverdue) ||
+                    (category === "due-soon" && !notifyDueSoon)) return;
                 if (isReminderSuppressed(reminder, now)) return;
                 if (category !== "overdue") dueThisMonthCount++;
                 if (category === "overdue") reminderGroups.overdue.push(reminder);
@@ -428,11 +437,13 @@ document.addEventListener("DOMContentLoaded", function () {
             const upcomingLater = reminderGroups.upcomingLater;
 
             updateReminderCount("reminder-overdue-total", overdue.length);
-            updateReminderCount("reminder-due-week", dueSoon.length);
+            updateReminderCount("reminder-due-soon-total", dueSoon.length);
             updateReminderCount("reminder-due-month", dueThisMonthCount);
             updateReminderCount("reminder-overdue-count", overdue.length);
             updateReminderCount("reminder-due-soon-count", dueSoon.length);
             updateReminderCount("reminder-upcoming-later-count", upcomingLater.length);
+            const dueSoonLabel = document.getElementById("reminder-due-soon-label");
+            if (dueSoonLabel) dueSoonLabel.textContent = `Due Soon (${reminderDueSoonDays} day${reminderDueSoonDays === 1 ? "" : "s"})`;
             const reminderWindowLabel = document.getElementById("reminder-window-label");
             if (reminderWindowLabel) reminderWindowLabel.textContent = `Due in ${reminderLookAheadDays} Days`;
 
@@ -554,7 +565,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function renderRecentActivities(limit = 15) {
             const assets = getStoredAssets();
-            const comments = JSON.parse(localStorage.getItem("assetComments") || "[]");
+            let comments = [];
+            try {
+                const parsed = JSON.parse(localStorage.getItem("assetComments") || "[]");
+                comments = Array.isArray(parsed) ? parsed.filter(comment => comment && typeof comment === "object") : [];
+            } catch (error) {
+                comments = [];
+            }
 
             let activityList = [];
 
@@ -902,8 +919,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 nextServiceDate.setHours(0, 0, 0, 0);
             }
             const hasNextServiceDate = nextServiceDate && !isNaN(nextServiceDate.getTime());
+            const { reminderDueSoonDays } = getAppPreferences();
             const dueSoonLimit = new Date(today);
-            dueSoonLimit.setDate(dueSoonLimit.getDate() + 30);
+            dueSoonLimit.setDate(dueSoonLimit.getDate() + reminderDueSoonDays);
 
             const isOutOfService = ["inactive", "out of service", "out-of-service"].includes(statusLower);
             const isOverdue = hasNextServiceDate && nextServiceDate < today;
@@ -1315,9 +1333,28 @@ document.addEventListener("DOMContentLoaded", function () {
                             event.target.value = "";
                             return;
                         }
-                        saveStoredAssets(normalized);
-                        refreshAssetDependentViews();
-                        showFeedback(`Imported ${normalized.length} asset${normalized.length === 1 ? "" : "s"} successfully.`, "success");
+                        const assets = getStoredAssets();
+                        const addedAssets = [];
+                        const assetIds = new Set(assets.map(asset => String(asset.id)));
+                        let skippedDuplicates = 0;
+                        normalized.forEach(asset => {
+                            const assetId = String(asset.id);
+                            if (assetIds.has(assetId)) {
+                                skippedDuplicates++;
+                                return;
+                            }
+                            addedAssets.push(asset);
+                            assetIds.add(assetId);
+                        });
+                        if (addedAssets.length) {
+                            saveStoredAssets([...assets, ...addedAssets]);
+                            refreshAssetDependentViews();
+                        }
+                        const result = `Added ${addedAssets.length} asset${addedAssets.length === 1 ? "" : "s"}`;
+                        const skipped = skippedDuplicates
+                            ? `; kept existing data and skipped ${skippedDuplicates} duplicate${skippedDuplicates === 1 ? "" : "s"}`
+                            : "";
+                        showFeedback(`${result}${skipped}.`, addedAssets.length ? "success" : "info");
                     } catch {
                         showFeedback("Invalid JSON format.", "error");
                     }
@@ -1556,8 +1593,17 @@ document.addEventListener("DOMContentLoaded", function () {
         if (exportCsvBtn) {
             exportCsvBtn.addEventListener("click", () => {
                 const assets = getStoredAssets();
+                const quoteCsvField = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
                 let csv = "Name,Type,Status,VIN,Year,Color,Added\n";
-                csv += assets.map(a => `"${a.name}","${a.type}","${a.status}","${a.vin || ""}","${a.year || ""}","${a.color || ""}","${new Date(a.created).toLocaleString()}"`).join("\n");
+                csv += assets.map(a => [
+                    a.name,
+                    a.type,
+                    a.status,
+                    a.vin,
+                    a.year,
+                    a.color,
+                    formatDisplayDate(a.created)
+                ].map(quoteCsvField).join(",")).join("\n");
                 const blob = new Blob([csv], { type: "text/csv" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
@@ -1816,6 +1862,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     notifyOverdue: overdueToggle ? overdueToggle.checked : true,
                     notifyToast: toastToggle ? toastToggle.checked : true
                 });
+                renderUpcomingReminders();
                 addAuditLog("Notification Preferences updated");
                 showFeedback("Notification preferences saved.", "success");
             });
@@ -2150,7 +2197,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (lastDate) {
                         const predDate = new Date(lastDate);
                         predDate.setDate(predDate.getDate() + 180);
-                        if (predDate > today) return null;
+                        if (predDate <= today) return null;
                         predicted = predDate;
                     }
                     return { ...a, lastService: lastDate, predicted };
@@ -2160,7 +2207,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 .slice(0, 5);
 
             const list = soonAssets.map(a => `<li>
-                Asset "<b>${a.name}</b>"
+                Asset "<b>${escapeHtml(a.name || "Unnamed Asset")}</b>"
                 - Predicted Service Date: <b>${a.predicted ? a.predicted.toLocaleDateString() : "?"}</b>
                 ${a.lastService ? `(last: ${a.lastService.toLocaleDateString()})` : ""}
             </li>`
@@ -3151,7 +3198,14 @@ document.addEventListener("DOMContentLoaded", function () {
         // --- Analytics Section: Service Trends and Predictive Maintenance ---
         // --- Team Roles: Dynamic ---
         function getTeam() {
-            return JSON.parse(localStorage.getItem("teamRoles") || "[]");
+            try {
+                const team = JSON.parse(localStorage.getItem("teamRoles") || "[]");
+                return Array.isArray(team)
+                    ? team.filter(member => member && typeof member === "object")
+                    : [];
+            } catch (error) {
+                return [];
+            }
         }
         function saveTeam(team) {
             localStorage.setItem("teamRoles", JSON.stringify(team));
@@ -3159,17 +3213,30 @@ document.addEventListener("DOMContentLoaded", function () {
         function renderTeamRoles() {
             const listDiv = document.querySelector("#collaboration-section .team-roles ul");
             if (!listDiv) return;
-            listDiv.innerHTML = "";
+            listDiv.replaceChildren();
             const team = getTeam();
             if (team.length === 0) {
-                listDiv.innerHTML = `<li class="empty-state">No team members yet. Add one below.</li>`;
+                const emptyItem = document.createElement("li");
+                emptyItem.className = "empty-state";
+                emptyItem.textContent = "No team members yet. Add one below.";
+                listDiv.appendChild(emptyItem);
             } else {
                 team.forEach((member, idx) => {
-                    listDiv.innerHTML += `<li>
-                    <span><b>${member.name}</b> (${member.role})</span>
-                    <button data-remove="${idx}" style="margin-left:1em;">Remove</button>
-                    <button data-edit="${idx}" style="margin-left:0.5em;">Edit</button>
-                </li>`;
+                    const item = document.createElement("li");
+                    const details = document.createElement("span");
+                    const name = document.createElement("b");
+                    name.textContent = String(member?.name || "");
+                    details.append(name, document.createTextNode(` (${String(member?.role || "")})`));
+                    const removeButton = document.createElement("button");
+                    removeButton.dataset.remove = String(idx);
+                    removeButton.style.marginLeft = "1em";
+                    removeButton.textContent = "Remove";
+                    const editButton = document.createElement("button");
+                    editButton.dataset.edit = String(idx);
+                    editButton.style.marginLeft = "0.5em";
+                    editButton.textContent = "Edit";
+                    item.append(details, removeButton, editButton);
+                    listDiv.appendChild(item);
                 });
             }
             if (!document.getElementById("add-team-form")) {
@@ -3643,12 +3710,32 @@ document.addEventListener("DOMContentLoaded", function () {
                 const notesDiv = document.querySelector(".comments-and-notes");
                 if (notesDiv) notesDiv.appendChild(commentsList);
             }
-            const comments = JSON.parse(localStorage.getItem("assetComments") || "[]");
-            commentsList.innerHTML = comments.length
-                ? comments.map(
-                    c => `<li><b>${c.author || "User"}:</b> ${c.text} <span style="color:gray;font-size:0.9em;">(${new Date(c.date).toLocaleString()})</span></li>`
-                ).join("")
-                : `<li class="empty-state">No comments yet. Add one to keep team notes in sync.</li>`;
+            let comments = [];
+            try {
+                const parsed = JSON.parse(localStorage.getItem("assetComments") || "[]");
+                comments = Array.isArray(parsed) ? parsed.filter(comment => comment && typeof comment === "object") : [];
+            } catch (error) {
+                comments = [];
+            }
+            commentsList.replaceChildren();
+            if (!comments.length) {
+                const emptyItem = document.createElement("li");
+                emptyItem.className = "empty-state";
+                emptyItem.textContent = "No comments yet. Add one to keep team notes in sync.";
+                commentsList.appendChild(emptyItem);
+                return;
+            }
+            comments.forEach(comment => {
+                const item = document.createElement("li");
+                const author = document.createElement("b");
+                author.textContent = `${String(comment?.author || "User")}:`;
+                const timestamp = document.createElement("span");
+                timestamp.style.color = "gray";
+                timestamp.style.fontSize = "0.9em";
+                timestamp.textContent = `(${formatDisplayDate(comment?.date, "Unknown date")})`;
+                item.append(author, document.createTextNode(` ${String(comment?.text || "")} `), timestamp);
+                commentsList.appendChild(item);
+            });
         }
 
         if (addCommentButton && commentsBox) {
@@ -3658,7 +3745,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     showFeedback("Please enter a comment.", "error");
                     return;
                 }
-                const comments = JSON.parse(localStorage.getItem("assetComments") || "[]");
+                let comments = [];
+                try {
+                    const parsed = JSON.parse(localStorage.getItem("assetComments") || "[]");
+                    comments = Array.isArray(parsed) ? parsed.filter(comment => comment && typeof comment === "object") : [];
+                } catch (error) {
+                    comments = [];
+                }
                 comments.unshift({
                     text,
                     date: new Date().toISOString(),
